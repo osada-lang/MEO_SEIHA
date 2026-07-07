@@ -175,6 +175,7 @@
                     <a href="#hallucination-details" class="hover:text-emerald-600 transition-colors">ハルシネーション対策</a>
                     <a href="#diagnosis-details" class="hover:text-emerald-600 transition-colors font-bold text-brandBlue-600">モンキー診断(提案)</a>
                     <a href="#report-details" class="hover:text-emerald-600 transition-colors font-bold text-amber-600">定期レポート(提案)</a>
+                    <a href="#feedback" class="hover:text-emerald-600 transition-colors font-bold text-slate-600">フィードバック</a>
                 </div>
                 <button onclick="window.print()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 shadow-sm">
                     <i data-lucide="printer" class="w-3.5 h-3.5"></i>
@@ -932,6 +933,56 @@
                                 </div>
                             </div>
                         </details>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- フィードバック・ご質問への回答（協議履歴） -->
+        <section id="feedback" class="space-y-6 mt-12">
+            <div class="flex items-center gap-3 border-b border-slate-200 pb-3">
+                <span class="bg-brandBlue-100 text-brandBlue-700 p-1.5 rounded-md"><i data-lucide="message-square-plus" class="w-5 h-5"></i></span>
+                <h2 class="text-2xl font-bold text-slate-900">フィードバック・ご質問への回答（協議履歴）</h2>
+            </div>
+            
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 md:p-8 shadow-md space-y-6">
+                <!-- 質問カード -->
+                <div class="border border-slate-200 bg-slate-50/50 rounded-xl p-5 space-y-4">
+                    <div class="space-y-2 text-left">
+                        <span class="text-xs font-black tracking-widest text-brandBlue-600 uppercase flex items-center gap-1.5 font-bold">
+                            <i data-lucide="help-circle" class="w-3.5 h-3.5"></i>
+                            都田氏からのご質問（ランニングコスト関連）
+                        </span>
+                        <h3 class="text-sm font-bold text-slate-900 leading-relaxed">
+                            Q. システム運用にかかるサーバー代や、AIのAPIクレジット費用（ランニングコスト）はどれくらいを見込んでおけば良いでしょうか？
+                        </h3>
+                        
+                        <!-- 回答 -->
+                        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-3 mt-4">
+                            <span class="text-xs font-bold text-emerald-800 flex items-center gap-1">
+                                <i data-lucide="check-circle2" class="w-4 h-4"></i>
+                                回答：【現在シミュレーション算出中（追記予定）】
+                            </span>
+                            <div class="text-[11px] text-slate-705 space-y-2 leading-relaxed">
+                                <p><strong>・ジラーチ社としての初期見解：</strong></p>
+                                <p class="pl-3">
+                                    文章生成のみを目的とする場合、Claudeのような超巨大かつ高単価なLLMを使用する必要はありません。文章作成に最適化され、かつ1トークンあたールのコストが極めて安価な<strong>軽量LLM（Gemini FlashやGPT-4o-mini等）</strong>を採用することで、API費用は桁違いに安く（<strong>1件の生成あたり約0.1〜0.5円以下</strong>など）抑えることが可能です。
+                                </p>
+                                <p class="pl-3 text-slate-500">
+                                    ※別事業で利用されているClaude API（企業向け診断ツールなどで1回約50円かかる等）のような「大規模な推論・データ処理」と、口コミ返信・投稿文作成のランニングコストは大きく異なります。
+                                </p>
+                                <p class="pl-3">
+                                    現在、想定店舗数や投稿・返信のアクティビティ（頻度）をモデル化し、月間の合計サーバー代とAPI利用料の「具体的なシミュレーション値」を算出しております。後ほど正確な数値・目安をこちらへ追記いたします。
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- 質問の背景 -->
+                        <div class="text-[11px] text-slate-500 space-y-1 mt-4 border-t border-slate-200 pt-3 leading-relaxed">
+                            <p class="font-bold text-slate-700">【ご質問の背景（2つの懸念点）】</p>
+                            <p>1. <strong>Claude APIの単価：</strong> 現在365MEOとは別の事業でClaude APIを使った企業向け診断ツールを動かされているが、その際に「1回あたり約50円」のAPI課金コストが発生しているため、本事業でも膨大なコストがかかるのではないかという懸念。</p>
+                            <p>2. <strong>既存ツールの文章生成上限：</strong> 既存の競合MEOツールでも、AI文章作成機能に「月間の作成上限」が設けられている事例があり、それはAPI課金発生のリスクを抑えるための仕様ではないかという予想。</p>
+                        </div>
                     </div>
                 </div>
             </div>
