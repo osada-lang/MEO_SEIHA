@@ -958,22 +958,108 @@
                         </h3>
                         
                         <!-- 回答 -->
-                        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-3 mt-4">
-                            <span class="text-xs font-bold text-emerald-800 flex items-center gap-1">
+                        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-5 space-y-4 mt-4">
+                            <span class="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
                                 <i data-lucide="check-circle2" class="w-4 h-4"></i>
-                                回答：【現在シミュレーション算出中（追記予定）】
+                                回答：【サーバー代 ✕ AI費用シミュレーション】
                             </span>
-                            <div class="text-[11px] text-slate-705 space-y-2 leading-relaxed">
-                                <p><strong>・ジラーチ社としての初期見解：</strong></p>
-                                <p class="pl-3">
-                                    文章生成のみを目的とする場合、Claudeのような超巨大かつ高単価なLLMを使用する必要はありません。文章作成に最適化され、かつ1トークンあたールのコストが極めて安価な<strong>軽量LLM（Gemini FlashやGPT-4o-mini等）</strong>を採用することで、API費用は桁違いに安く（<strong>1件の生成あたり約0.1〜0.5円以下</strong>など）抑えることが可能です。
+                            <div class="text-[11px] text-slate-700 space-y-4 leading-relaxed">
+                                <p class="font-bold text-slate-900 border-b border-emerald-200/60 pb-1.5 flex items-center gap-1">
+                                    <i data-lucide="server" class="w-3.5 h-3.5 text-emerald-600"></i>
+                                    1. サーバー代のシミュレーション（固定・準固定費）
                                 </p>
-                                <p class="pl-3 text-slate-500">
-                                    ※別事業で利用されているClaude API（企業向け診断ツールなどで1回約50円かかる等）のような「大規模な推論・データ処理」と、口コミ返信・投稿文作成のランニングコストは大きく異なります。
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full text-[10px] text-slate-600 border border-slate-200 rounded-lg overflow-hidden">
+                                        <thead class="bg-slate-100 text-slate-800 font-bold">
+                                            <tr>
+                                                <th class="px-3 py-2 border-b border-slate-200 text-left">想定契約店舗数</th>
+                                                <th class="px-3 py-2 border-b border-slate-200 text-left">月額サーバー総額の目安</th>
+                                                <th class="px-3 py-2 border-b border-slate-200 text-left">1店舗あたりの月間コスト</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr class="bg-white hover:bg-slate-50/50">
+                                                <td class="px-3 py-2 border-b border-slate-200 font-semibold text-slate-950">100 店舗</td>
+                                                <td class="px-3 py-2 border-b border-slate-200">5,000円 / 月</td>
+                                                <td class="px-3 py-2 border-b border-slate-200 font-bold text-emerald-700">約 50 円</td>
+                                            </tr>
+                                            <tr class="bg-slate-50/20 hover:bg-slate-50/50">
+                                                <td class="px-3 py-2 border-b border-slate-200 font-semibold text-slate-950">1,000 店舗</td>
+                                                <td class="px-3 py-2 border-b border-slate-200">15,000円 / 月</td>
+                                                <td class="px-3 py-2 border-b border-slate-200 font-bold text-emerald-700">約 15 円</td>
+                                            </tr>
+                                            <tr class="bg-white hover:bg-slate-50/50">
+                                                <td class="px-3 py-2 border-b border-slate-200 font-semibold text-slate-950">10,000 店舗</td>
+                                                <td class="px-3 py-2 border-b border-slate-200">80,000円 / 月</td>
+                                                <td class="px-3 py-2 border-b border-slate-200 font-bold text-emerald-700">約 8 円</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p class="text-[10px] text-slate-500">
+                                    ※ 規模に応じてデータベース容量やWebサーバーを徐々に拡張するため、店舗数が多くなるほど「1店舗あたりの固定サーバーコスト」は薄まって安くなります。
                                 </p>
-                                <p class="pl-3">
-                                    現在、想定店舗数や投稿・返信のアクティビティ（頻度）をモデル化し、月間の合計サーバー代とAPI利用料の「具体的なシミュレーション値」を算出しております。後ほど正確な数値・目安をこちらへ追記いたします。
+
+                                <p class="font-bold text-slate-900 border-b border-emerald-200/60 pt-2 pb-1.5 flex items-center gap-1">
+                                    <i data-lucide="cpu" class="w-3.5 h-3.5 text-emerald-600"></i>
+                                    2. AIモデル別 API費用シミュレーション（完全従量・変動費）
                                 </p>
+                                <p class="text-[10px] text-slate-500 leading-normal">
+                                    ・<strong>1店舗あたりの月間利用量（前提）：</strong> 毎日自動投稿30回 ＋ 口コミ返信30件 ＝ 計60回生成（約8.4万トークン消費相当）<br>
+                                    ・<strong>重要：</strong> API費用は完全従量制（使った分だけの課金）のため、他社からのボリュームディスカウントがない限り、<strong>契約件数（ボリューム）によって「1店舗あたりのAPIコスト」自体は基本的に変動しません（変わらないご認識で合っています）。</strong>
+                                </p>
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full text-[10px] text-slate-600 border border-slate-200 rounded-lg overflow-hidden">
+                                        <thead class="bg-slate-100 text-slate-800 font-bold">
+                                            <tr>
+                                                <th class="px-3 py-2 border-b border-slate-200 text-left">AIモデル名 / ランク</th>
+                                                <th class="px-3 py-2 border-b border-slate-200 text-left">1店舗あたり月額費用</th>
+                                                <th class="px-3 py-2 border-b border-slate-200 text-left">100店舗</th>
+                                                <th class="px-3 py-2 border-b border-slate-200 text-left">1,000店舗</th>
+                                                <th class="px-3 py-2 border-b border-slate-200 text-left">10,000店舗</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr class="bg-white hover:bg-slate-50/50">
+                                                <td class="px-3 py-2 border-b border-slate-200 font-semibold text-slate-950">Claude 3.5 Sonnet <span class="text-[9px] text-slate-400 font-normal">(超高性能)</span></td>
+                                                <td class="px-3 py-2 border-b border-slate-200 font-bold text-rose-700">約 81.0 円</td>
+                                                <td class="px-3 py-2 border-b border-slate-200">8,100円</td>
+                                                <td class="px-3 py-2 border-b border-slate-200">81,000円</td>
+                                                <td class="px-3 py-2 border-b border-slate-200">810,000円</td>
+                                            </tr>
+                                            <tr class="bg-slate-50/20 hover:bg-slate-50/50">
+                                                <td class="px-3 py-2 border-b border-slate-200 font-semibold text-slate-950">GPT-4o <span class="text-[9px] text-slate-400 font-normal">(高性能)</span></td>
+                                                <td class="px-3 py-2 border-b border-slate-200 font-bold text-amber-700">約 58.5 円</td>
+                                                <td class="px-3 py-2 border-b border-slate-200">5,850円</td>
+                                                <td class="px-3 py-2 border-b border-slate-200">58,500円</td>
+                                                <td class="px-3 py-2 border-b border-slate-200">585,000円</td>
+                                            </tr>
+                                            <tr class="bg-white hover:bg-slate-50/50">
+                                                <td class="px-3 py-2 border-b border-slate-200 font-semibold text-slate-950">GPT-4o-mini <span class="text-[9px] text-slate-400 font-normal">(軽量・安価)</span></td>
+                                                <td class="px-3 py-2 border-b border-slate-200 font-bold text-emerald-700">約 3.51 円</td>
+                                                <td class="px-3 py-2 border-b border-slate-200">351円</td>
+                                                <td class="px-3 py-2 border-b border-slate-200">3,510円</td>
+                                                <td class="px-3 py-2 border-b border-slate-200">35,100円</td>
+                                            </tr>
+                                            <tr class="bg-emerald-50/30 hover:bg-emerald-50/50 border-2 border-emerald-400/30">
+                                                <td class="px-3 py-2 border-b border-slate-200 font-bold text-emerald-955 flex items-center gap-1">Gemini 1.5 Flash <span class="text-[9px] text-emerald-600 font-semibold bg-emerald-100 px-1 rounded">最安・推奨</span></td>
+                                                <td class="px-3 py-2 border-b border-slate-200 font-bold text-emerald-800">約 1.76 円</td>
+                                                <td class="px-3 py-2 border-b border-slate-200 font-semibold">176円</td>
+                                                <td class="px-3 py-2 border-b border-slate-200 font-semibold">1,760円</td>
+                                                <td class="px-3 py-2 border-b border-slate-200 font-semibold text-emerald-900">17,600円</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="bg-white p-3 rounded-lg border border-emerald-100 text-[10px] text-slate-600 space-y-1.5 shadow-inner">
+                                    <p><strong>💡 結論とジラーチ社の推奨方針：</strong></p>
+                                    <p>
+                                        都田様が他事業で利用されているClaude（診断用）は高度なロジック処理が必要なため1回50円と高額ですが、今回の「MEO自動投稿・口コミ返信」はテキスト生成に特化しているため、<strong>月額クレジット単価が劇的に安い「Gemini 1.5 Flash」や「GPT-4o-mini」で十分なクオリティを達成可能</strong>です。
+                                    </p>
+                                    <p>
+                                        最安の **Gemini 1.5 Flash（月額1店舗あたりわずか約1.76円）** を採用すれば、1万店舗契約でも月間API費用はわずか1万7千円台で済みます。加盟店から月額19,800円の利用料をいただくビジネスモデルに対し、AI費用コストは **「0.01%以下」** となるため、API料金の上限課金制限や赤字化のリスクは全く考慮する必要がありません。
+                                    </p>
+                                </div>
                             </div>
                         </div>
 
