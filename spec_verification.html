@@ -172,6 +172,7 @@
                     <a href="#post-details" class="hover:text-emerald-600 transition-colors">投稿仕様</a>
                     <a href="#reply-details" class="hover:text-emerald-600 transition-colors">返信・LINE仕様</a>
                     <a href="#failsafe-details" class="hover:text-emerald-600 transition-colors">フェイルセーフ</a>
+                    <a href="#hallucination-details" class="hover:text-emerald-600 transition-colors">ハルシネーション対策</a>
                     <a href="#diagnosis-details" class="hover:text-emerald-600 transition-colors font-bold text-brandBlue-600">モンキー診断(提案)</a>
                     <a href="#report-details" class="hover:text-emerald-600 transition-colors font-bold text-amber-600">定期レポート(提案)</a>
                 </div>
@@ -227,7 +228,7 @@
                         <div class="w-full sm:w-48 bg-slate-200 rounded-full h-3 overflow-hidden shadow-inner">
                             <div id="progress-bar" class="bg-emerald-500 h-3 rounded-full transition-all duration-500" style="width: 0%;"></div>
                         </div>
-                        <span id="progress-text" class="text-base font-black text-slate-700 shrink-0">0 / 4</span>
+                        <span id="progress-text" class="text-base font-black text-slate-700 shrink-0">0 / 5</span>
                     </div>
                 </div>
 
@@ -590,6 +591,80 @@
                                 <!-- 閉じるボタン -->
                                 <div class="mt-6 pt-4 border-t border-brandBlue-100 flex justify-end no-print">
                                     <button type="button" onclick="closeDetails(event, 'failsafe-details')" class="bg-brandBlue-600 hover:bg-brandBlue-700 text-white text-xs font-bold px-4.5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 shadow-md hover:shadow-lg active:scale-95">
+                                        <i data-lucide="chevron-up" class="w-4 h-4"></i>
+                                        この詳細仕様を閉じる
+                                    </button>
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- 項目5 (オレンジ) -->
+                    <div class="border border-amber-200 bg-amber-50/20 rounded-xl p-5 space-y-4 hover:border-amber-300 transition-colors">
+                        <label class="flex items-start gap-4 cursor-pointer">
+                            <input type="checkbox" onchange="updateProgress()" class="spec-checkbox w-5.5 h-5.5 mt-0.5 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+                            <div class="space-y-1">
+                                <span class="font-bold text-sm text-slate-900 block">5. AIハルシネーション対策と営業ヒアリング・調整連携への認識一致</span>
+                                <span class="text-xs text-slate-500 leading-relaxed block">
+                                    店舗情報の変更（営業時間等）の有無を営業担当が定期ヒアリングし、ジラーチ社がデータチューニングを施すハルシネーション（AI誤情報生成）防止フローへの同意。
+                                </span>
+                            </div>
+                        </label>
+                        
+                        <details id="hallucination-details" class="border-t border-amber-200/60 pt-3">
+                            <summary class="flex items-center justify-between text-xs text-emerald-600 font-bold cursor-pointer hover:text-emerald-700 select-none">
+                                <span class="flex items-center gap-1.5">
+                                    <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                                    詳細な仕様・防止フローを見る
+                                </span>
+                                <i data-lucide="chevron-down" class="w-4 h-4 chevron-icon"></i>
+                            </summary>
+                            <div class="mt-4 p-5 md:p-6 bg-white/90 rounded-xl border border-amber-100 shadow-sm space-y-6">
+                                <div class="space-y-6 text-left text-xs">
+                                    <p class="text-slate-650 text-xs">
+                                        AIが古い情報や誤った営業時間等を生成して投稿・返信するリスク（ハルシネーション）を防ぐための、営業 ✕ 開発の連携運用フローです。
+                                    </p>
+
+                                    <!-- 防止フローのステップ -->
+                                    <div class="grid sm:grid-cols-2 gap-4">
+                                        <div class="bg-slate-50 border border-slate-200 p-4 rounded-lg space-y-1.5">
+                                            <span class="font-bold text-[11px] text-slate-900 flex items-center gap-1">
+                                                <span class="bg-amber-100 text-amber-800 text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">1</span>
+                                                営業担当による定期ヒアリング
+                                            </span>
+                                            <p class="text-[11px] text-slate-505 leading-relaxed">
+                                                365MEOの営業担当から店舗オーナーへ定期的に連絡を取り、「店舗の営業時間、メニュー、休業日など、前回の連絡から変更点がないか」をヒアリングします。
+                                            </p>
+                                        </div>
+                                        <div class="bg-slate-50 border border-slate-200 p-4 rounded-lg space-y-1.5">
+                                            <span class="font-bold text-[11px] text-slate-900 flex items-center gap-1">
+                                                <span class="bg-amber-100 text-amber-800 text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">2</span>
+                                                ジラーチ社によるデータ調整
+                                            </span>
+                                            <p class="text-[11px] text-slate-505 leading-relaxed">
+                                                営業担当から共有された営業時間等の変更点を受け、ジラーチ社（開発側）がAIプロンプトや店舗マスタデータを更新し、誤情報（ハルシネーション）を防止するチューニングを実施します。
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <!-- 認識合わせしたいこと（協議事項） -->
+                                    <div class="space-y-2 pt-4 border-t border-dashed border-slate-300 text-left">
+                                        <span class="text-xs font-black tracking-widest text-brandBlue-600 uppercase flex items-center gap-1.5 font-bold">
+                                            <i data-lucide="help-circle" class="w-3.5 h-3.5"></i>
+                                            認識合わせしたいこと（協議事項）
+                                        </span>
+                                        <p class="text-xs text-slate-800 leading-relaxed font-semibold">
+                                            Q. 365MEOのアフターフォロー（定期ヒアリング業務）にかかる人件費は、予算に含まれていますか？
+                                        </p>
+                                        <p class="text-[11px] text-slate-600 leading-relaxed">
+                                            ※ 営業担当が各店舗に定期連絡を繰り返す運用コストが、既存 of プロジェクト予算および販売モデル（月額19,800円の利益構造）の想定範囲内に含まれているかをすり合わせる必要があります。
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- 閉じるボタン -->
+                                <div class="mt-6 pt-4 border-t border-amber-100 flex justify-end no-print">
+                                    <button type="button" onclick="closeDetails(event, 'hallucination-details')" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-4.5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 shadow-md hover:shadow-lg active:scale-95">
                                         <i data-lucide="chevron-up" class="w-4 h-4"></i>
                                         この詳細仕様を閉じる
                                     </button>
