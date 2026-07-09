@@ -996,10 +996,22 @@
                                         </tbody>
                                     </table>
                                 </div>
-                                <p class="text-[10px] text-slate-500">
+                                <p class="text-[10px] text-slate-500 border-b border-emerald-200/60 pb-2">
                                     ※ <strong>ストック画像保管用ストレージ費用を含みます：</strong> 1店舗あたり最大100枚の画像（平均3MB/枚＝計300MB/店舗）を３６５MEO側でストック保管する前提で再計算しています。<br>
                                     ※ 画像ストレージには世界最安水準でデータ転送量無料の「Cloudflare R2（1GBあたり約2.25円/月）」を採用します。10,000店舗分（計3TB・約3万枚）を保管してもストレージ費用は<strong>月額わずか約6,750円（1店舗あたり約0.68円）</strong>であり、全体の費用感にほぼ影響はありません。
                                 </p>
+                                <div class="bg-white p-3 rounded-lg border border-emerald-100 text-[10px] text-slate-650 space-y-1 shadow-inner">
+                                    <p class="font-bold text-slate-900 flex items-center gap-1">
+                                        <i data-lucide="info" class="w-3.5 h-3.5 text-emerald-600"></i>
+                                        【合意事項】ストック画像の上限について
+                                    </p>
+                                    <p class="text-slate-600">
+                                        コストが極めて安価なため、<strong>加盟店向けには「ストック画像上限なし（無制限）」を強力なメリットとして提供する方針</strong>で決定します。
+                                    </p>
+                                    <p class="text-[9px] text-slate-500 leading-normal">
+                                        ※システム安全運用のための措置（バグによる無限自動保存や悪意ある超巨大ファイルのアップロード対策）として、<strong>①1ファイル最大10MB制限</strong>、<strong>②バックグラウンドでの画像自動圧縮（適正サイズへの自動リサイズ）</strong>をジラーチ社側でシステム内部に実装します。これにより、ストレージ容量をさらに節約しつつ、表示速度の高速化（SEO/UX向上）も両立します。
+                                    </p>
+                                </div>
 
                                 <p class="font-bold text-slate-900 border-b border-emerald-200/60 pt-2 pb-1.5 flex items-center gap-1">
                                     <i data-lucide="cpu" class="w-3.5 h-3.5 text-emerald-600"></i>
