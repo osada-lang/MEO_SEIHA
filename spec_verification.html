@@ -422,24 +422,24 @@
                                         </ol>
                                     </div>
 
-                                    <!-- 画像提供のジレンマと、ストック画像フォールバック設計 -->
+                                    <!-- 画像連携方法とストック画像フォールバック設計 -->
                                     <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
                                         <h3 class="font-bold text-slate-900 flex items-center gap-1 border-b border-slate-100 pb-2">
-                                            <i data-lucide="alert-circle" class="w-3.5 h-3.5 text-brandBlue-600"></i>
-                                            画像提供のジレンマとストック画像フォールバック設計
+                                            <i data-lucide="folder-open" class="w-3.5 h-3.5 text-brandBlue-600"></i>
+                                            Google Drive画像連携 ✕ ストック画像フォールバック設計
                                         </h3>
                                         <div class="space-y-2 text-[11px] leading-relaxed text-slate-600">
                                             <p class="text-rose-700 font-semibold">
                                                 <strong>※ AI画像生成は完全不採用（ToS違反によるアカウントBANリスク回避のため）</strong>
                                             </p>
                                             <p>
-                                                <strong>① 写真の使い回し許容:</strong> Google規約上、実物写真の複数回投稿は違反になりません。店舗の写真提出が遅れた場合でも自動投稿を止めないためのフォールバックとして使い回しを許容します。
+                                                <strong>① 専用Google Drive連携【合意済】:</strong> 店舗ごとに専用のGoogle Driveフォルダを用意します。店舗オーナーがDriveへ写真をアップロードするだけで、システムが自動的に画像ファイルを取り込み、日々の自動投稿へ適用します（管理画面への手動アップロード不要）。
                                             </p>
                                             <p>
-                                                <strong>② 汎用ストック自動選択:</strong> 新しい画像がない場合は、オンボーディング時に初期登録された「看板・店内写真」などのストック画像からシステムがランダム選択して自動投稿します。
+                                                <strong>② 写真の使い回し許容:</strong> Google規約上、実物写真の複数回投稿はポリシー違反になりません。店舗の写真提供が遅れた場合でも自動投稿を止めないためのフォールバックとして、ストックされた写真の使い回しを許容します。
                                             </p>
                                             <p>
-                                                <strong>③ サポートフォローによる回収:</strong> 最新写真への更新は、加盟店サポートや定期フォローコール業務にてオーナーから能動的に回収・反映します。
+                                                <strong>③ 汎用ストック自動選択:</strong> 新しい画像がない場合は、オンボーディング時に初期登録された「看板・店内写真」などのストック画像からシステムがランダム選択して自動投稿します。
                                             </p>
                                         </div>
                                     </div>
@@ -448,14 +448,14 @@
                                     <div class="space-y-2 pt-4 border-t border-dashed border-slate-300 text-left">
                                         <span class="text-xs font-black tracking-widest text-brandBlue-600 uppercase flex items-center gap-1.5 font-bold">
                                             <i data-lucide="help-circle" class="w-3.5 h-3.5"></i>
-                                            認識合わせしたいこと（協議事項）
+                                            認識合わせしたこと（合意事項）
                                         </span>
                                         <p class="text-xs text-slate-800 leading-relaxed font-semibold">
-                                            Q. 「最新写真の回収・更新」における具体的な運用フローはどちらになりますか？
+                                            【合意済】最新画像のアップロード回収・運用ルールについて
                                         </p>
-                                        <div class="text-[11px] text-slate-605 leading-relaxed pl-4 space-y-1.5 mt-1">
-                                            <p><strong>案1:</strong> 営業担当者（またはサポートスタッフ）が定期的（月1回等）に個別連絡（電話等）を取り、手動で回収して管理画面へ反映する。</p>
-                                            <p><strong>案2:</strong> LINE公式アカウントから自動で「最新の写真を送ってください」と定期メッセージを配信し、オーナーから送られてきたものを管理画面に登録する運用にとどめる。</p>
+                                        <div class="text-[11px] text-slate-600 leading-relaxed pl-4 space-y-1.5 mt-1">
+                                            <p>・店舗オーナーが専用Google Driveへ定期的に画像をアップロードするよう、365MEOの営業担当より適宜依頼・リマインドを行います。</p>
+                                            <p>・「冷やし中華始めました/終わりました」などの季節限定メニュー終了時に伴う、不要になった画像のDrive内削除についても、営業担当から店舗側へ依頼して対応します。</p>
                                         </div>
                                     </div>
 
@@ -501,9 +501,10 @@
                                         </h3>
                                         <ul class="list-disc pl-5 space-y-1 text-slate-600">
                                             <li><strong>専用管理画面:</strong> クライアントごとの専用管理画面で各種設定が可能。</li>
-                                            <li><strong>自動返信のON/OFF:</strong> 評価ごとに自動返信するかしないかON/OFFが可能（例: ☆5は自動返信するが☆1はしない等）。</li>
-                                            <li><strong>ランダム返信設定:</strong> 評価ごとに返信内容を5つずつ用意しておき、システムがランダムに使用する。</li>
-                                            <li><strong>☆1緊急通知:</strong> ☆1が入った場合、店舗担当者へLINE通知を送信する。</li>
+                                            <li><strong>自動返信のON/OFF【合意済】:</strong> 導入後、店舗側が管理画面から都度いつでもON/OFFを自由に切り替えられる仕様とします。</li>
+                                            <li><strong>自動返信対象の限定【合意済】:</strong> 自動返信は **星3〜5のみ** 行い、返信は初動（1回）のみとします。</li>
+                                            <li><strong>低評価（☆1・☆2）対応【合意済】:</strong> 自動返信は行わず、**下書き作成まで** をシステムが自動で行います。</li>
+                                            <li><strong>☆1緊急通知:</strong> 星1の口コミ投稿時にシステムからLINE通知を送る仕様とします（通知不具合発生時のみ、ジラーチへエラー通知が送信されます）。</li>
                                         </ul>
                                     </div>
 
@@ -563,15 +564,14 @@
                                     <div class="space-y-2 pt-4 border-t border-dashed border-slate-300 text-left">
                                         <span class="text-xs font-black tracking-widest text-emerald-600 uppercase flex items-center gap-1.5 font-bold">
                                             <i data-lucide="help-circle" class="w-3.5 h-3.5"></i>
-                                            認識合わせしたいこと（協議事項）
+                                            認識合わせしたこと（合意事項）
                                         </span>
                                         <p class="text-xs text-slate-800 leading-relaxed font-semibold">
-                                            Q. 「自動返信のON/OFF」は管理画面から適宜切り替えられるようにしますか？ 導入時の固定設定としますか？
+                                            【合意済】返信の自動ON/OFF切り替え運用について
                                         </p>
-                                        <div class="text-[11px] text-slate-605 leading-relaxed pl-4 space-y-1.5 mt-1">
-                                            <p><strong>案1:</strong> 管理画面から店舗オーナーが適宜（いつでも）自由に変更・切り替えができる設計にする。</p>
-                                            <p><strong>案2:</strong> 導入（オンボーディング）時に希望を選択してもらい、システム側で固定する（店舗オーナーは自由に変更できない）。</p>
-                                        </div>
+                                        <p class="text-[11px] text-slate-600 leading-relaxed pl-4">
+                                            ・店舗オーナーが管理画面から、いつでも自動返信のON/OFFを任意に切り替えられる仕様（案1）を採用し実装します。
+                                        </p>
                                     </div>
 
                                 </div>
@@ -878,56 +878,43 @@
                     <!-- 提案2: 定期成果レポート (ライトブルー) -->
                     <div class="border border-brandBlue-200 bg-brandBlue-50/20 rounded-xl p-5 space-y-4 hover:border-brandBlue-300 transition-colors">
                         <div class="space-y-1">
-                            <span class="bg-blue-100 text-brandBlue-800 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider inline-block">Proposal 2 (THANX 祖父江社長・THANX CREATE都田氏 提案)</span>
-                            <span class="font-bold text-sm text-slate-900 block">顧客価値実感のための「定期成果レポート機能」の検討</span>
+                            <span class="bg-rose-100 text-rose-800 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider inline-block">【見送り決定】Proposal 2</span>
+                            <span class="font-bold text-sm text-slate-900 block line-through text-slate-500">顧客価値実感のための「定期成果レポート機能」の検討</span>
                             <span class="text-xs text-slate-500 leading-relaxed block">
-                                月額19,800円（税込）の価値を顧客に実感させ解約を防ぐため、GBP標準インサイトの案内にとどめるか、365MEO独自の月次成果自動レポート（または簡易ダッシュボード）を開発するかについての協議事項。
+                                【合意結果】THANX側にて「ジャイロン（Gyro-n / 1アカウント1,000〜1,500円想定）」を単独利用して成果レポートを作成することとなりました。本システム（365MEO）へレポート機能を組み込む必要はなく、GBPへ直接アクセスして独立稼働できるため、開発見送りとなりました。
                             </span>
                         </div>
                         
                         <details id="report-details" class="border-t border-brandBlue-200/60 pt-4 mt-2">
-                            <summary class="flex items-center justify-between text-xs text-amber-700 font-extrabold cursor-pointer select-none bg-amber-50 hover:bg-amber-100/80 border border-amber-200 rounded-xl py-3.5 px-4 transition-all duration-200 active:scale-[0.99] outline-none shadow-sm hover:shadow">
+                            <summary class="flex items-center justify-between text-xs text-rose-700 font-extrabold cursor-pointer select-none bg-rose-50 hover:bg-rose-100/80 border border-rose-200 rounded-xl py-3.5 px-4 transition-all duration-200 active:scale-[0.99] outline-none shadow-sm hover:shadow">
                                 <span class="flex items-center gap-1.5">
-                                    <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
-                                    詳細な検討アプローチを見る
+                                    <i data-lucide="slash" class="w-4 h-4 text-rose-600"></i>
+                                    合意結果と見送りの背景を見る
                                 </span>
                                 <i data-lucide="chevron-down" class="w-4 h-4 chevron-icon"></i>
                             </summary>
-                            <div class="mt-4 p-5 md:p-6 bg-white/90 rounded-xl border border-brandBlue-100 shadow-sm space-y-6">
+                            <div class="mt-4 p-5 md:p-6 bg-white/90 rounded-xl border border-rose-100 shadow-sm space-y-6">
                                 <div class="space-y-4 text-left">
-                                    <div class="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-2.5 rounded-xl text-xs">
-                                        毎月の支払いに対する成果の実感を促し、継続率（LTV）を高めるレポート手法についての検討事項です。
+                                    <div class="bg-rose-50 border border-rose-200 text-rose-900 px-4 py-2.5 rounded-xl text-xs">
+                                        月次成果レポートの提供方法についての検討は、以下の合意内容に基づき「開発見送り」となりました。
                                     </div>
 
-                                    <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-4 shadow-sm">
-                                        <div class="grid sm:grid-cols-2 gap-4 text-[11px] leading-relaxed text-slate-600">
-                                            <div class="border border-slate-200 p-3 rounded-lg">
-                                                <span class="font-bold text-slate-900 block mb-1">■ 案A：Googleビジネスプロフィール（GBP）の標準画面案内</span>
-                                                <p class="text-slate-500 text-[10px]">
-                                                    <strong>利点:</strong> 開発コストゼロ。Google公式データをオーナーが自身で直接確認。<br>
-                                                    <strong>欠点:</strong> オーナーがログインして確認する手間があり、放置されて価値を感じにくくなるリスク。
-                                                </p>
-                                            </div>
-                                            <div class="border-2 border-brandBlue-500 p-3 rounded-lg bg-brandBlue-50/10">
-                                                <span class="font-bold text-brandBlue-955 block mb-1">■ 案B：365MEO独自の「月次自動簡易レポート」送付</span>
-                                                <p class="text-slate-705 text-[10px]">
-                                                    <strong>利点:</strong> 投稿数・返信数・検索露出推移などの主要成果を月次で自動集計し、LINEやメールでオーナーへプッシュ配信。解約防止に直結。<br>
-                                                    <strong>欠点:</strong> APIデータ集計およびレポート生成の開発コスト。
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div class="bg-slate-50 p-3 rounded-lg text-[11px] text-slate-600">
-                                            <strong>💡 進め方（協議事項）：</strong><br>
-                                            初版リリース時はGBP標準の案内にとどめ、フェーズ2でAPIデータ連携による「簡易レポート送信機能」を追加実装するか、開発工数を照らし合わせ3者で決定します。
-                                        </div>
+                                    <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-3 shadow-sm text-xs leading-relaxed text-slate-650">
+                                        <p class="font-bold text-slate-900 flex items-center gap-1">
+                                            <i data-lucide="check" class="w-4 h-4 text-emerald-600"></i>
+                                            合意決定事項
+                                        </p>
+                                        <ul class="list-disc pl-5 space-y-1.5 text-slate-600 text-[11px]">
+                                            <li><strong>外部サービス「ジャイロン（Gyro-n）」の採用:</strong> THANX側にてジャイロン（月額1,000〜1,500円/アカウント想定）を単独利用して月次レポートを作成します。</li>
+                                            <li><strong>GBPへ直接アクセス:</strong> ジャイロンから直接Googleビジネスプロフィール（GBP）へアクセスして独立してレポート作成が可能です。</li>
+                                            <li><strong>365MEOへの組み込み不要:</strong> 上記運用でレポート業務が独立して完結できるため、本システム（365MEO）へレポート機能や集計エンジンを開発・組み込む必要はありません。これにより、開発工数・コストが削減されました。</li>
+                                        </ul>
                                     </div>
                                 </div>
                                 <!-- 閉じるボタン -->
-                                <div class="mt-6 pt-4 border-t border-brandBlue-100 flex justify-end no-print">
-                                    <button type="button" onclick="closeDetails(event, 'report-details')" class="bg-brandBlue-600 hover:bg-brandBlue-700 text-white text-xs font-bold px-4.5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 shadow-md hover:shadow-lg active:scale-95">
+                                <div class="mt-6 pt-4 border-t border-rose-100 flex justify-end no-print">
+                                    <button type="button" onclick="closeDetails(event, 'report-details')" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-4.5 py-2.5 rounded-xl transition-all flex items-center gap-1.5 shadow-md hover:shadow-lg active:scale-95">
                                         <i data-lucide="chevron-up" class="w-4 h-4"></i>
-                                        this.close
                                         この提案を閉じる
                                     </button>
                                 </div>
