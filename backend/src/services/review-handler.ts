@@ -145,6 +145,52 @@ export class ReviewHandlerService {
   }
 
   /**
+   * Geminiを使用して、店主からの特定指示（directive）に基づいて、謝罪下書き文を書き直します（再生成）
+   */
+  public async generateCustomApologyDraft(
+    review: { starRating: number; comment: string | null },
+    storeName: string,
+    customPrompt?: string,
+    directive?: string
+  ): Promise<string> {
+    if (!this.genAI) {
+      throw new Error('❌ Gemini API is not initialized. Check GEMINI_API_KEY in .env');
+    }
+
+    const model = this.genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+
+    const prompt = `
+      あなたは店舗「${storeName}」のオーナー代理として、お客様から届いたGoogleマップ上の低評価口コミ（★${review.starRating}）に対して、返信用のお詫びメッセージ下書きを作成・書き直してください。
+
+      【お客様からの口コミ内容】
+      「${review.comment || '本文なし・低評価評価のみ'}」
+
+      【お詫び文の生成ルール（厳守事項）】
+      1. まず不快な思いをさせてしまったことを、オーナーとして深く、真摯に謝罪してください。
+      2. お客様の不満点（口コミに書かれている内容）に具体的に触れ、共感し寄り添ってください。
+      3. 今後の改善に向けた誠実な姿勢を述べてください。
+      4. 記号（「！」や「？」など）や絵文字は、真面目な謝罪の場にそぐわないため、一切使用しないでください。すべて丁寧な日本語の句読点（「。」「、」）のみで文章を構成してください。
+      5. 文字数は200文字以内に収めてください。
+      6. 最後に署名や店名は入れず、本文のみを作成してください。
+
+      ${customPrompt ? `【店舗別の個別お詫び・返信指示】\n${customPrompt}` : ''}
+
+      【今回の店主からの「書き直し（再生成）」追加指示・トーン指定】
+      ★必ず以下の指示に従い、お詫び文を全面的に調整・書き直してください：
+      「${directive || '丁寧かつ真摯なトーンで作成してください。'}」
+    `;
+
+    try {
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return response.text().trim();
+    } catch (error: any) {
+      console.error('❌ Failed to regenerate apology draft with Gemini:', error);
+      return 'この度は当店のご利用に際し、ご満足のいくサービスを提供できず、不快な思いをさせてしまいましたことを深くお詫び申し上げます。今後、このようなことがないようスタッフへの指導とサービスの改善に努めてまいります。';
+    }
+  }
+
+  /**
    * 店舗オーナー宛てに、マジックリンクと下書き文付きの緊急LINEアラートをプッシュ送信します
    */
   private async sendLineAlert(userId: string, storeName: string, review: ReviewEvent, aiDraft: string): Promise<void> {

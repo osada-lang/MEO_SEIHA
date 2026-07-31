@@ -83,6 +83,7 @@ app.post('/api/auth/login', async (req, res) => {
         id: shop.id,
         name: shop.name,
         email: shop.email,
+        role: shop.role,
         google_location_id: shop.google_location_id,
         google_drive_folder_id: shop.google_drive_folder_id,
         line_user_id: shop.line_user_id,
@@ -126,6 +127,7 @@ app.get('/api/auth/me', async (req, res) => {
         id: shop.id,
         name: shop.name,
         email: shop.email,
+        role: shop.role,
         google_location_id: shop.google_location_id,
         google_drive_folder_id: shop.google_drive_folder_id,
         line_user_id: shop.line_user_id,
@@ -558,6 +560,51 @@ app.post('/api/shops/:shopId/reviews/:reviewId/reply', async (req, res) => {
   } catch (error) {
     console.error('❌ Reply send error:', error);
     return res.status(500).json({ error: '返信の送信に失敗しました。' });
+  }
+});
+
+// POST /api/shops/:shopId/reviews/:reviewId/regenerate-reply (Regenerate AI apology with custom directive)
+app.post('/api/shops/:shopId/reviews/:reviewId/regenerate-reply', async (req, res) => {
+  const { shopId, reviewId } = req.params;
+  const { directive } = req.body;
+
+  try {
+    const shop = await prisma.shop.findUnique({ where: { id: shopId } });
+    if (!shop) {
+      return res.status(404).json({ error: '店舗が見つかりませんでした。' });
+    }
+
+    const review = await prisma.reviewLogs.findUnique({ where: { review_id: reviewId } });
+    if (!review) {
+      return res.status(404).json({ error: '口コミが見つかりませんでした。' });
+    }
+
+    console.log(`🔄 [AIお詫び文再生成] 口コミ: ${reviewId} | 指示: "${directive || '標準指示'}"`);
+
+    // Call Gemini review handler helper
+    const newReplyText = await reviewHandler.generateCustomApologyDraft(
+      { starRating: review.star_rating, comment: review.comment },
+      shop.name,
+      shop.custom_review_prompt || undefined,
+      directive
+    );
+
+    // Save/update in database so it is persistent!
+    const updated = await prisma.reviewLogs.update({
+      where: { review_id: reviewId },
+      data: {
+        reply_text: newReplyText,
+      }
+    });
+
+    return res.json({
+      success: true,
+      replyText: newReplyText,
+      review: updated,
+    });
+  } catch (error: any) {
+    console.error('❌ AI reply regeneration failed:', error);
+    return res.status(500).json({ error: error.message || 'AI返信文の再生成に失敗しました。' });
   }
 });
 

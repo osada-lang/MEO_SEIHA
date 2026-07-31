@@ -13,6 +13,23 @@ async function main() {
 
   console.log('🧹 Cleaned existing database tables.');
 
+  // 1.5. Create Admin User (ADMIN)
+  const adminShop = await prisma.shop.create({
+    data: {
+      id: 'admin-seiha-uuid',
+      name: 'MEO SEIHAシステム管理運営本部',
+      email: 'admin@meo-seiha.com',
+      password: 'password',
+      role: 'ADMIN',
+      google_location_id: null,
+      google_drive_folder_id: null,
+      line_user_id: null,
+      reply_active: false,
+      custom_review_prompt: null,
+      gyron_report_url: null,
+    },
+  });
+
   // 2. Create Shop: Avenir Hair (美容室)
   const shop1 = await prisma.shop.create({
     data: {
@@ -20,6 +37,7 @@ async function main() {
       name: 'Avenir Hair 栄店',
       email: 'hair@example.com',
       password: 'password', // For prototype, simple raw password is fine
+      role: 'OWNER',
       google_location_id: 'place_id_avenir_hair_123',
       google_drive_folder_id: 'drive_folder_avenir_hair_abc',
       line_user_id: process.env.LINE_USER_ID || 'U205e0595cff6e3882288962525941500',
@@ -36,6 +54,7 @@ async function main() {
       name: '頑固一徹ラーメン 駅前店',
       email: 'ramen@example.com',
       password: 'password',
+      role: 'OWNER',
       google_location_id: 'place_id_ganko_ramen_456',
       google_drive_folder_id: 'drive_folder_ganko_ramen_def',
       line_user_id: process.env.LINE_USER_ID || 'U205e0595cff6e3882288962525941500',
@@ -52,6 +71,7 @@ async function main() {
       name: '合同会社THANX CREATE',
       email: 'thanx@example.com',
       password: 'password',
+      role: 'OWNER',
       google_location_id: 'place_id_thanx_create_789',
       google_drive_folder_id: 'drive_folder_thanx_create_ghi',
       line_user_id: process.env.LINE_USER_ID || 'U205e0595cff6e3882288962525941500',

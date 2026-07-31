@@ -24,6 +24,7 @@ interface ShopProfile {
   id: string;
   name: string;
   email: string;
+  role: string;
   google_location_id: string | null;
   google_drive_folder_id: string | null;
   line_user_id: string | null;
@@ -87,6 +88,7 @@ interface SettingsData {
 
 export default function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [userRole, setUserRole] = useState<string | null>(localStorage.getItem('userRole'));
   const [currentShop, setCurrentShop] = useState<ShopProfile | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'photos' | 'settings' | 'reviews'>('dashboard');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -206,7 +208,9 @@ export default function App() {
       const data = await res.json();
       if (res.ok) {
         localStorage.setItem('token', data.token);
+        localStorage.setItem('userRole', data.shop.role);
         setToken(data.token);
+        setUserRole(data.shop.role);
         setCurrentShop(data.shop);
         setActiveTab('dashboard');
       } else {
@@ -222,7 +226,9 @@ export default function App() {
   // Log out helper
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('userRole');
     setToken(null);
+    setUserRole(null);
     setCurrentShop(null);
     setDashboard(null);
     setSettings(null);
@@ -243,6 +249,7 @@ export default function App() {
       const data = await res.json();
       if (res.ok) {
         localStorage.setItem('token', data.token);
+        // Do NOT overwrite userRole here to maintain ADMIN switcher panel visibility!
         setToken(data.token);
         setCurrentShop(data.shop);
         setActiveTab('dashboard');
@@ -445,6 +452,35 @@ export default function App() {
     }
   };
 
+  // Regenerate/rewrite AI apology draft using custom directives
+  const handleRegenerateReply = async (reviewId: string, directiveText: string) => {
+    if (!currentShop) return;
+    setIsLoading(true);
+
+    try {
+      const res = await fetch(`${API_BASE}/shops/${currentShop.id}/reviews/${reviewId}/regenerate-reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ directive: directiveText }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setEditingReplyText(prev => ({
+          ...prev,
+          [reviewId]: data.replyText,
+        }));
+        showBanner('success', '🪄 AIが指定された指示に従ってお詫び文を書き直しました！');
+      } else {
+        showBanner('error', data.error || '再生成に失敗しました。');
+      }
+    } catch (err) {
+      showBanner('error', '通信エラー：AI再生成をリクエストできませんでした。');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Set preset prompt templates for specific industries
   const applyIndustryTemplate = (industry: 'hair' | 'ramen' | 'standard') => {
     if (!settings) return;
@@ -475,8 +511,8 @@ export default function App() {
   // loading screens
   if (isPageLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
-        <RefreshCw className="w-10 h-10 text-brandBlue-500 animate-spin mb-4" />
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
+        <RefreshCw className="w-10 h-10 text-indigo-500 animate-spin mb-4" />
         <p className="text-slate-300 font-medium text-sm">セッションを同期中...</p>
       </div>
     );
@@ -487,64 +523,64 @@ export default function App() {
   // ==========================================
   if (!token || !currentShop) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="min-h-screen stripe-mesh flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md text-center px-4">
-          <h1 className="text-3xl font-black tracking-tight text-white flex items-center justify-center gap-2">
-            <Sparkles className="w-8 h-8 text-brandBlue-400 fill-brandBlue-500" />
+          <h1 className="text-4xl font-black tracking-tight text-white flex items-center justify-center gap-2 drop-shadow-sm">
+            <Sparkles className="w-9 h-9 text-indigo-200 fill-indigo-100" />
             MEO SEIHA
           </h1>
-          <p className="mt-2 text-xs text-slate-400 font-bold tracking-widest uppercase">
+          <p className="mt-2 text-xs text-indigo-100 font-bold tracking-widest uppercase opacity-90 drop-shadow-sm">
             全自動投稿＆AI口コミ返信システム
           </p>
         </div>
 
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4">
-          <div className="bg-slate-900 border border-slate-800 py-8 px-6 shadow-xl rounded-2xl sm:px-10 space-y-6">
-            <h2 className="text-xl font-bold text-white text-center border-b border-slate-800 pb-4">
-              店舗オーナー ログイン
+          <div className="bg-white/95 border border-white/20 py-8 px-6 shadow-2xl rounded-3xl sm:px-10 space-y-6">
+            <h2 className="text-xl font-black text-stripeInk text-center border-b border-slate-100 pb-4">
+              ログインアカウント
             </h2>
 
             {authError && (
-              <div className="bg-rose-950/40 border border-rose-800/80 rounded-xl p-3.5 flex items-start gap-2.5">
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-3.5 flex items-start gap-2.5">
                 <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
-                <span className="text-xs text-rose-300 leading-relaxed font-medium">{authError}</span>
+                <span className="text-xs text-rose-800 leading-relaxed font-semibold">{authError}</span>
               </div>
             )}
 
-            <form className="space-y-4" onSubmit={handleLogin}>
+            <form className="space-y-4.5" onSubmit={handleLogin}>
               <div>
-                <label className="block text-xs font-bold text-slate-400 tracking-wider mb-1.5 uppercase">
+                <label className="block text-xs font-bold text-stripeInk-mute tracking-wider mb-1.5 uppercase">
                   メールアドレス
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-4.5 w-4.5 text-slate-500" />
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Mail className="h-4.5 w-4.5 text-stripeInk-mute" />
                   </div>
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-2.5 border border-slate-800 rounded-xl bg-slate-950/60 placeholder-slate-600 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brandBlue-500 focus:border-transparent transition-all"
+                    className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl bg-slate-50/60 placeholder-slate-400 text-sm text-stripeInk focus:outline-none focus:ring-2 focus:ring-stripeIndigo-500 focus:border-transparent transition-all"
                     placeholder="email@example.com"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-400 tracking-wider mb-1.5 uppercase">
+                <label className="block text-xs font-bold text-stripeInk-mute tracking-wider mb-1.5 uppercase">
                   パスワード
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-4.5 w-4.5 text-slate-500" />
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Lock className="h-4.5 w-4.5 text-stripeInk-mute" />
                   </div>
                   <input
                     type="password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-2.5 border border-slate-800 rounded-xl bg-slate-950/60 placeholder-slate-600 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brandBlue-500 focus:border-transparent transition-all"
+                    className="block w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl bg-slate-50/60 placeholder-slate-400 text-sm text-stripeInk focus:outline-none focus:ring-2 focus:ring-stripeIndigo-500 focus:border-transparent transition-all"
                     placeholder="••••••••"
                   />
                 </div>
@@ -556,9 +592,9 @@ export default function App() {
                     type="checkbox"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4.5 h-4.5 rounded text-brandBlue-600 focus:ring-brandBlue-500 border-slate-800 bg-slate-950/60"
+                    className="w-4.5 h-4.5 rounded text-stripeIndigo-500 focus:ring-stripeIndigo-500 border-slate-200 bg-slate-50"
                   />
-                  <span className="ml-2 text-xs text-slate-400 font-bold">次回から自動ログイン</span>
+                  <span className="ml-2 text-xs text-stripeInk-secondary font-bold">次回から自動ログイン</span>
                 </label>
               </div>
 
@@ -566,7 +602,7 @@ export default function App() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-brandBlue-600 hover:bg-brandBlue-700 text-white font-extrabold text-sm py-3 px-4 rounded-xl shadow-lg transition-all focus:outline-none active:scale-[0.98] flex items-center justify-center gap-1.5"
+                  className="w-full bg-stripeIndigo-500 hover:bg-stripeIndigo-600 text-white font-extrabold text-sm py-3 px-4 rounded-full shadow-md shadow-stripeIndigo-500/10 transition-all focus:outline-none active:scale-[0.98] flex items-center justify-center gap-1.5"
                 >
                   {isLoading ? (
                     <RefreshCw className="w-4 h-4 animate-spin" />
@@ -577,34 +613,43 @@ export default function App() {
               </div>
             </form>
 
-            <div className="border-t border-slate-800 pt-6 space-y-3">
-              <span className="block text-center text-xs font-bold text-slate-500 uppercase tracking-widest">
-                💡 クイックテスト用店舗スイッチ
+            <div className="border-t border-slate-100 pt-6 space-y-3">
+              <span className="block text-center text-xs font-bold text-stripeInk-mute uppercase tracking-widest">
+                💡 クイックテスト用デモアカウント
               </span>
               <div className="grid grid-cols-1 gap-2.5">
                 <button
                   type="button"
-                  onClick={() => handleDemoSwitch('hair@example.com')}
-                  className="w-full bg-slate-950/50 hover:bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 font-bold text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-between"
+                  onClick={() => {
+                    setEmail('admin@meo-seiha.com');
+                    setPassword('password');
+                  }}
+                  className="w-full bg-slate-50 hover:bg-stripeIndigo-50 border border-slate-200 hover:border-stripeIndigo-200 text-stripeInk-secondary font-bold text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-between group"
+                >
+                  <span>MEO SEIHA運営本部 (管理者)</span>
+                  <span className="text-[10px] bg-purple-100 text-purple-700 px-2.5 py-0.5 rounded-full font-bold">ADMIN</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail('hair@example.com');
+                    setPassword('password');
+                  }}
+                  className="w-full bg-slate-50 hover:bg-stripeIndigo-50 border border-slate-200 hover:border-stripeIndigo-200 text-stripeInk-secondary font-bold text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-between"
                 >
                   <span>Avenir Hair 栄店 (美容室)</span>
-                  <span className="text-[10px] bg-indigo-950 text-indigo-300 px-2 py-0.5 rounded-full font-bold">上品トーン</span>
+                  <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2.5 py-0.5 rounded-full font-bold">OWNER</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleDemoSwitch('ramen@example.com')}
-                  className="w-full bg-slate-950/50 hover:bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 font-bold text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-between"
+                  onClick={() => {
+                    setEmail('ramen@example.com');
+                    setPassword('password');
+                  }}
+                  className="w-full bg-slate-50 hover:bg-stripeIndigo-50 border border-slate-200 hover:border-stripeIndigo-200 text-stripeInk-secondary font-bold text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-between"
                 >
                   <span>頑固一徹ラーメン 駅前店 (飲食店)</span>
-                  <span className="text-[10px] bg-amber-950 text-amber-300 px-2 py-0.5 rounded-full font-bold">活気トーン</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDemoSwitch('thanx@example.com')}
-                  className="w-full bg-slate-950/50 hover:bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 font-bold text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-between"
-                >
-                  <span>合同会社THANX CREATE (一般店)</span>
-                  <span className="text-[10px] bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded-full font-bold">通常トーン</span>
+                  <span className="text-[10px] bg-amber-100 text-amber-700 px-2.5 py-0.5 rounded-full font-bold">OWNER</span>
                 </button>
               </div>
             </div>
@@ -659,44 +704,46 @@ export default function App() {
       {/* 🚀 Active Screen Container */}
       <main className="flex-1 max-w-md w-full mx-auto px-4 py-5 space-y-5">
         {/* 🏬 Switcher inside Dashboard for Demo Testing */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 shadow-md flex items-center justify-between text-white text-xs font-extrabold gap-2.5 no-print">
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>検証店舗切替:</span>
+        {userRole === 'ADMIN' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 shadow-md flex items-center justify-between text-white text-xs font-extrabold gap-2.5 no-print">
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>検証店舗切替:</span>
+            </div>
+            <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
+              <button
+                onClick={() => handleDemoSwitch('hair@example.com')}
+                className={`px-2.5 py-1.5 rounded-lg border text-[10px] font-bold shrink-0 transition-all ${
+                  currentShop.id === 'avenir-hair-uuid'
+                    ? 'bg-brandBlue-600 border-brandBlue-500 text-white'
+                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                美容室
+              </button>
+              <button
+                onClick={() => handleDemoSwitch('ramen@example.com')}
+                className={`px-2.5 py-1.5 rounded-lg border text-[10px] font-bold shrink-0 transition-all ${
+                  currentShop.id === 'ganko-ramen-uuid'
+                    ? 'bg-brandBlue-600 border-brandBlue-500 text-white'
+                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                ラーメン
+              </button>
+              <button
+                onClick={() => handleDemoSwitch('thanx@example.com')}
+                className={`px-2.5 py-1.5 rounded-lg border text-[10px] font-bold shrink-0 transition-all ${
+                  currentShop.id === 'thanx-create-uuid'
+                    ? 'bg-brandBlue-600 border-brandBlue-500 text-white'
+                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                THANX
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
-            <button
-              onClick={() => handleDemoSwitch('hair@example.com')}
-              className={`px-2.5 py-1.5 rounded-lg border text-[10px] font-bold shrink-0 transition-all ${
-                currentShop.id === 'avenir-hair-uuid'
-                  ? 'bg-brandBlue-600 border-brandBlue-500 text-white'
-                  : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
-              }`}
-            >
-              美容室
-            </button>
-            <button
-              onClick={() => handleDemoSwitch('ramen@example.com')}
-              className={`px-2.5 py-1.5 rounded-lg border text-[10px] font-bold shrink-0 transition-all ${
-                currentShop.id === 'ganko-ramen-uuid'
-                  ? 'bg-brandBlue-600 border-brandBlue-500 text-white'
-                  : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
-              }`}
-            >
-              ラーメン
-            </button>
-            <button
-              onClick={() => handleDemoSwitch('thanx@example.com')}
-              className={`px-2.5 py-1.5 rounded-lg border text-[10px] font-bold shrink-0 transition-all ${
-                currentShop.id === 'thanx-create-uuid'
-                  ? 'bg-brandBlue-600 border-brandBlue-500 text-white'
-                  : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
-              }`}
-            >
-              THANX
-            </button>
-          </div>
-        </div>
+        )}
 
         {/* 1️⃣ SCREEN: Dashboard */}
         {activeTab === 'dashboard' && dashboard && (
@@ -1267,6 +1314,71 @@ export default function App() {
                               });
                             }}
                           />
+
+                          {/* 🪄 AI Rewrite Presets and custom directive input */}
+                          <div className="flex flex-col gap-2.5 bg-slate-50 border border-slate-100 rounded-xl p-3">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                              <Sparkles className="w-3.5 h-3.5 text-indigo-500 fill-indigo-50" />
+                              🪄 トーンを指定してAIで書き直す
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleRegenerateReply(review.review_id, 'より丁寧でフォーマルな謝罪文にしてください。')}
+                                disabled={isLoading}
+                                className="bg-white hover:bg-indigo-50 border border-slate-200 text-slate-700 text-[10px] font-bold py-1 px-2.5 rounded-lg transition-all active:scale-[0.97] flex items-center gap-1"
+                              >
+                                💼 よりフォーマル
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRegenerateReply(review.review_id, '150文字以内の非常に簡潔なお詫び文にまとめてください。')}
+                                disabled={isLoading}
+                                className="bg-white hover:bg-indigo-50 border border-slate-200 text-slate-700 text-[10px] font-bold py-1 px-2.5 rounded-lg transition-all active:scale-[0.97] flex items-center gap-1"
+                              >
+                                ⚡ 短く簡潔に
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRegenerateReply(review.review_id, 'お客様への真摯な謝罪に加え、今後の技術指導や接客カウンセリング教育を早急に徹底する改善姿勢を強調してください。')}
+                                disabled={isLoading}
+                                className="bg-white hover:bg-indigo-50 border border-slate-200 text-slate-700 text-[10px] font-bold py-1 px-2.5 rounded-lg transition-all active:scale-[0.97] flex items-center gap-1"
+                              >
+                                🔧 改善アピール
+                              </button>
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <input
+                                type="text"
+                                id={`custom-directive-${review.review_id}`}
+                                placeholder="例: もっと親しみやすく、技術面についてお詫びして"
+                                className="flex-1 border border-slate-200 rounded-lg px-2.5 py-1.5 text-[10px] font-bold bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    const target = e.currentTarget;
+                                    if (target.value.trim() !== '') {
+                                      handleRegenerateReply(review.review_id, target.value);
+                                      target.value = '';
+                                    }
+                                  }
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const input = document.getElementById(`custom-directive-${review.review_id}`) as HTMLInputElement;
+                                  if (input && input.value.trim() !== '') {
+                                    handleRegenerateReply(review.review_id, input.value);
+                                    input.value = '';
+                                  }
+                                }}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all shadow-sm"
+                              >
+                                指示する
+                              </button>
+                            </div>
+                          </div>
                           <button
                             type="button"
                             onClick={() => handleSendApology(review.review_id)}
