@@ -156,64 +156,6 @@ async function main() {
 
   console.log('📝 Seeded default static ReplyTemplates.');
 
-  // 9. Create some mock ReviewLogs for the dashboard display
-  const now = new Date();
-
-  // Seeding logs for Avenir Hair
-  await prisma.reviewLogs.createMany({
-    data: [
-      {
-        shop_id: shop1.id,
-        review_id: 'rev-hair-001',
-        reviewer_name: '佐藤 花子',
-        star_rating: 5,
-        comment: '初めて伺いましたが、カットもカラーも大満足です！完全個室だったので周りを気にせずリラックスできました。また髪質改善トリートメントをしに伺います。',
-        reply_text: defaultStar5[0],
-        is_auto_replied: true,
-        create_time: new Date(now.getTime() - 24 * 60 * 60 * 1000), // 1 day ago
-      },
-      {
-        shop_id: shop1.id,
-        review_id: 'rev-hair-002',
-        reviewer_name: '鈴木 次郎',
-        star_rating: 3,
-        comment: '仕上がりはとても良かったです。ただ、アシスタントさんのシャンプーの時の爪が少し長くて気になりました。技術は高いのでまた行くと思います。',
-        reply_text: defaultStar3[0],
-        is_auto_replied: true,
-        create_time: new Date(now.getTime() - 48 * 60 * 60 * 1000), // 2 days ago
-      },
-      {
-        shop_id: shop1.id,
-        review_id: 'rev-hair-003',
-        reviewer_name: '怒り姫',
-        star_rating: 1,
-        comment: '事前に髪質改善と縮毛矯正で予約したのに、カウンセリングで「この髪質では無理」と強く言われ、結局やりたかった縮毛矯正を断られました。言葉遣いも上から目線で、とても悲しい気持ちになりました。二度と行きません。',
-        reply_text: 'この度はご来店いただいたにもかかわらず、カウンセリング時における不適切な対応と説明不足により、大変悲しく不快な思いをさせてしまいましたことを、深くお詫び申し上げます。また、縮毛矯正のご希望に寄り添えず、重ねて残念な気持ちにさせてしまいましたことを心よりお詫びいたします。今後は技術教育とともに、お客様に寄り添う丁寧なカウンセリングを徹底し、信頼回復に努めてまいります。', // Mock AI generated apology draft
-        is_auto_replied: false,
-        requires_alert: true,
-        escalation_triggered: true,
-        create_time: new Date(now.getTime() - 2 * 60 * 60 * 1000), // 2 hours ago (Pending review!)
-      }
-    ],
-  });
-
-  // Seeding logs for THANX CREATE
-  await prisma.reviewLogs.createMany({
-    data: [
-      {
-        shop_id: shop3.id,
-        review_id: 'rev-thanx-001',
-        reviewer_name: '山田 太郎',
-        star_rating: 5,
-        comment: 'THANX CREATEさんのMEO SEIHAシステムを導入して、マップ順位が1位になり、店舗の電話が毎日鳴り止まなくなりました！お詫び自動返信機能も非常に重宝しています。素晴らしい効果です！',
-        reply_text: defaultStar5[2],
-        is_auto_replied: true,
-        create_time: new Date(now.getTime() - 12 * 60 * 60 * 1000), // 12 hours ago
-      }
-    ],
-  });
-
-  console.log('📈 Seeded mock ReviewLogs for dashboard.');
   console.log('🟢 Database seeding completed successfully!');
 }
 
