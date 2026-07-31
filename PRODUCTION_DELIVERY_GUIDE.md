@@ -69,3 +69,33 @@ MEO SEIHAシステムの本番リリースに向けたインフラサーバー�
 
 ## 💡 パートナー企業への説明用キラーフレーズ
 > 「サーバー（Vercel/Render）実費以外（AIやLINE、Googleマップ連携）は、**すべて各サービスが用意している『手厚い無料枠』の範囲内で動くため、基本的には『月額0円（完全無料）』で収まります。** 万が一店舗数やアクセスが急増して無料枠を超えた場合も、登録いただいたカードから直接サービス提供元に数十円〜数百円レベルの実費が引き落とされるだけで、ジラーチ社からインフラ実費を二重で請求することはありませんのでご安心ください。」
+
+---
+
+## 🌐 4. 【3分作業】THANX社のRenderに「Web Service」を作成する手順
+
+データベース（PostgreSQL）に続き、最後に24時間プログラムを動かすための「Web Service」をTHANX社のアカウントに作成します。画面共有しながら以下の通りに設定を進めてもらってください。
+
+1. **GitHubリポジトリの連携**:
+   * 右上の **`＋ New`** ➔ **`Web Service`** を選択。
+   * ジラーチ社様のGitHubアカウント、または共有された本番用リポジトリ（`https://github.com/osada-lang/MEO_SEIHA.git`）を連携・選択します。
+2. **基本設定（Web Service Configuration）**:
+   * **Name**: `meo-seiha-api`
+   * **Region**: `Oregon (US West)` (※データベースと同じリージョンを選択)
+   * **Language**: `Node`
+   * **Branch**: `main`
+   * **Root Directory**: `backend` (※backendフォルダを指定します)
+   * **Build Command**: `npm install && npx prisma generate && npm run build`
+   * **Start Command**: `npm run start`
+   * **Instance Type**: **`Starter ($7/month)`** を選択
+3. **環境変数（Environment Variables）の追加**:
+   * 作成画面の「Environment」タブ、または作成後に以下のキーを追加します：
+     * `DATABASE_URL`: `postgresql://meoseiha_user:oJSysHiueTZ2Sf9YwtNIVo5SRRK9Feca@dpg-d9lje4nqj5pc7396mu40-a.oregon-postgres.render.com/meoseiha`
+     * `GEMINI_API_KEY`: `AQ.Ab8RN6J4qOjYJJhFJSiBRmvIbnW8OMDPD-bXdDfVWpLdvb9o7w`
+     * `LINE_CHANNEL_ACCESS_TOKEN`: `OR7bQ5TOqWGH2DKpv5UUU77Ci1KeLRMz1dJQLVf/7hg9ixyOSsap4TY00pK98A4YPHB1vK8CSMPWNZxoiYjtvAX8hutIbptg0rungx474h4pV5qCtH5wlMrXfOgZ6Qc9b6E1qDhlDGwboYFfo55HiAdB04t89/1O/w1cDnyilFU=`
+     * `LINE_CHANNEL_SECRET`: `4791e57f25bf228920cb61cd9c6f0ef0`
+     * `LINE_USER_ID`: `U205e0595cff6e3882288962525941500`
+4. **作成**:
+   * 一番下の **`Create Web Service`** をクリック。約2〜3分で本番APIサーバーが世界に公開されます！
+   * 公開後に発行されるURL（例：`https://meo-seiha-api.onrender.com`）をコピーして、フロントエンドのビルドに使用します。
+
