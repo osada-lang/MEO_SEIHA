@@ -46,13 +46,7 @@ interface MockFile {
   createdTime: string;
 }
 
-let mockDriveFiles: MockFile[] = [
-  { id: 'mock-img-001', name: 'shop_exterior_day.jpg', mimeType: 'image/jpeg', size: '2.4 MB', createdTime: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: 'mock-img-002', name: 'interior_seating_vibe.jpg', mimeType: 'image/jpeg', size: '1.8 MB', createdTime: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: 'mock-img-003', name: 'seasonal_menu_board.png', mimeType: 'image/png', size: '3.1 MB', createdTime: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: 'mock-img-004', name: 'premium_cut_beef.jpg', mimeType: 'image/jpeg', size: '4.2 MB', createdTime: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: 'mock-img-005', name: 'happy_staff_greeting.jpg', mimeType: 'image/jpeg', size: '2.1 MB', createdTime: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
-];
+let mockDriveFiles: MockFile[] = [];
 
 // Initialize ReviewHandlerService
 const reviewHandler = new ReviewHandlerService();
