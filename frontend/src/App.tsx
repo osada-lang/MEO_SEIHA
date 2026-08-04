@@ -525,10 +525,9 @@ export default function App() {
     return (
       <div className="min-h-screen stripe-mesh flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md text-center px-4">
-          <h1 className="text-4xl font-black tracking-tight text-white flex items-center justify-center gap-2 drop-shadow-sm">
-            <Sparkles className="w-9 h-9 text-indigo-200 fill-indigo-100" />
-            MEO SEIHA
-          </h1>
+          <div className="flex justify-center mb-4">
+            <img src="/logo_bk.png" alt="MEO SEIHA" className="h-16 w-auto object-contain drop-shadow-md" />
+          </div>
           <p className="mt-2 text-xs text-indigo-100 font-bold tracking-widest uppercase opacity-90 drop-shadow-sm">
             全自動投稿＆AI口コミ返信システム
           </p>
@@ -667,8 +666,7 @@ export default function App() {
       {/* 🧭 Global Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-slate-200/80 px-4 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-6 h-6 text-brandBlue-600 fill-brandBlue-50" />
-          <span className="font-black text-slate-900 tracking-tight text-base">MEO SEIHA</span>
+          <img src="/logo_bk.png" alt="MEO SEIHA" className="h-7 w-auto object-contain" />
         </div>
         <div className="flex items-center gap-2.5">
           <div className="hidden md:block text-right">
