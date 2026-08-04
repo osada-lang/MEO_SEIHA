@@ -95,7 +95,7 @@ export default function App() {
   const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
 
   // Authentication Form
-  const [email, setEmail] = useState<string>('hair@example.com'); // Default value for testing
+  const [email, setEmail] = useState<string>('thanx@example.com'); // Default value for testing
   const [password, setPassword] = useState<string>('password');
   const [rememberMe, setRememberMe] = useState<boolean>(true);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -614,7 +614,7 @@ export default function App() {
 
             <div className="border-t border-slate-100 pt-6 space-y-3">
               <span className="block text-center text-xs font-bold text-stripeInk-mute uppercase tracking-widest">
-                💡 クイックテスト用デモアカウント
+                💡 テスト用ログインアカウント
               </span>
               <div className="grid grid-cols-1 gap-2.5">
                 <button
@@ -631,24 +631,13 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => {
-                    setEmail('hair@example.com');
+                    setEmail('thanx@example.com');
                     setPassword('password');
                   }}
                   className="w-full bg-slate-50 hover:bg-stripeIndigo-50 border border-slate-200 hover:border-stripeIndigo-200 text-stripeInk-secondary font-bold text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-between"
                 >
-                  <span>Avenir Hair 栄店 (美容室)</span>
+                  <span>合同会社THANX CREATE (店舗オーナー)</span>
                   <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2.5 py-0.5 rounded-full font-bold">OWNER</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmail('ramen@example.com');
-                    setPassword('password');
-                  }}
-                  className="w-full bg-slate-50 hover:bg-stripeIndigo-50 border border-slate-200 hover:border-stripeIndigo-200 text-stripeInk-secondary font-bold text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-between"
-                >
-                  <span>頑固一徹ラーメン 駅前店 (飲食店)</span>
-                  <span className="text-[10px] bg-amber-100 text-amber-700 px-2.5 py-0.5 rounded-full font-bold">OWNER</span>
                 </button>
               </div>
             </div>
@@ -701,47 +690,6 @@ export default function App() {
 
       {/* 🚀 Active Screen Container */}
       <main className="flex-1 max-w-md w-full mx-auto px-4 py-5 space-y-5">
-        {/* 🏬 Switcher inside Dashboard for Demo Testing */}
-        {userRole === 'ADMIN' && (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 shadow-md flex items-center justify-between text-white text-xs font-extrabold gap-2.5 no-print">
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>検証店舗切替:</span>
-            </div>
-            <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
-              <button
-                onClick={() => handleDemoSwitch('hair@example.com')}
-                className={`px-2.5 py-1.5 rounded-lg border text-[10px] font-bold shrink-0 transition-all ${
-                  currentShop.id === 'avenir-hair-uuid'
-                    ? 'bg-brandBlue-600 border-brandBlue-500 text-white'
-                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                美容室
-              </button>
-              <button
-                onClick={() => handleDemoSwitch('ramen@example.com')}
-                className={`px-2.5 py-1.5 rounded-lg border text-[10px] font-bold shrink-0 transition-all ${
-                  currentShop.id === 'ganko-ramen-uuid'
-                    ? 'bg-brandBlue-600 border-brandBlue-500 text-white'
-                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                ラーメン
-              </button>
-              <button
-                onClick={() => handleDemoSwitch('thanx@example.com')}
-                className={`px-2.5 py-1.5 rounded-lg border text-[10px] font-bold shrink-0 transition-all ${
-                  currentShop.id === 'thanx-create-uuid'
-                    ? 'bg-brandBlue-600 border-brandBlue-500 text-white'
-                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
-                }`}
-              >
-                THANX
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* 1️⃣ SCREEN: Dashboard */}
         {activeTab === 'dashboard' && dashboard && (

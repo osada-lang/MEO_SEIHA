@@ -30,41 +30,7 @@ async function main() {
     },
   });
 
-  // 2. Create Shop: Avenir Hair (美容室)
-  const shop1 = await prisma.shop.create({
-    data: {
-      id: 'avenir-hair-uuid',
-      name: 'Avenir Hair 栄店',
-      email: 'hair@example.com',
-      password: 'password', // For prototype, simple raw password is fine
-      role: 'OWNER',
-      google_location_id: 'place_id_avenir_hair_123',
-      google_drive_folder_id: 'drive_folder_avenir_hair_abc',
-      line_user_id: process.env.LINE_USER_ID || 'U205e0595cff6e3882288962525941500',
-      reply_active: true,
-      custom_review_prompt: '美容室にふさわしい上品で落ち着いた言葉遣いで作成してください。お客様の髪の毛に触れるデリケートな施術を行う立場として、お客様のご不安や残念な気持ちに寄り添ってください。技術力と完全個室リラックス空間を誇るサロンとしての誠実さを持って、接客カウンセリング教育の徹底に努める姿勢をアピールしてください。',
-      gyron_report_url: 'https://www.gyro-n.com/meo/sample/hair',
-    },
-  });
-
-  // 3. Create Shop: 頑固一徹ラーメン (ラーメン店)
-  const shop2 = await prisma.shop.create({
-    data: {
-      id: 'ganko-ramen-uuid',
-      name: '頑固一徹ラーメン 駅前店',
-      email: 'ramen@example.com',
-      password: 'password',
-      role: 'OWNER',
-      google_location_id: 'place_id_ganko_ramen_456',
-      google_drive_folder_id: 'drive_folder_ganko_ramen_def',
-      line_user_id: process.env.LINE_USER_ID || 'U205e0595cff6e3882288962525941500',
-      reply_active: true,
-      custom_review_prompt: '元気で親しみやすく、かつ極めて誠意のある言葉遣いで作成してください。麺のコシ、スープの一滴にまで魂を込めるラーメン店として、味と接客サービスへの妥協なき職人魂を持ち、スープを一口飲んだ時の感動を再び提供できるよう厨房一同で早急に改善に努める熱い姿勢を伝えてください。',
-      gyron_report_url: 'https://www.gyro-n.com/meo/sample/ramen',
-    },
-  });
-
-  // 4. Create Shop: 合同会社THANX CREATE (一般・標準店)
+  // 2. Create Shop: 合同会社THANX CREATE (一般・標準店)
   const shop3 = await prisma.shop.create({
     data: {
       id: 'thanx-create-uuid',
@@ -81,31 +47,9 @@ async function main() {
     },
   });
 
-  console.log('🏬 Created 3 Shops.');
+  console.log('🏬 Created Shops.');
 
-  // 5. Create ShopKeywords for Avenir Hair
-  await prisma.shopKeywords.create({
-    data: {
-      shop_id: shop1.id,
-      main_keywords: JSON.stringify(['栄 美容室', '髪質改善', '縮毛矯正']),
-      sub_keywords: JSON.stringify(['トリートメント', 'ヘアケア', '完全個室', 'プライベートサロン', 'マンツーマン']),
-      fixed_footer: '店舗名: Avenir Hair 栄店\n住所: 名古屋市中区錦3丁目\n電話: 052-XXX-XXXX',
-      custom_prompt: '上品で落ち着いたトーンで、髪質改善と艶髪へのこだわりを強調してください。',
-    },
-  });
-
-  // 6. Create ShopKeywords for 頑固一徹ラーメン
-  await prisma.shopKeywords.create({
-    data: {
-      shop_id: shop2.id,
-      main_keywords: JSON.stringify(['名古屋 ラーメン', '濃厚豚骨', '自家製麺']),
-      sub_keywords: JSON.stringify(['チャーシュー', '深夜営業', '極太麺', 'こだわりスープ', 'ランチ']),
-      fixed_footer: '店舗名: 頑固一徹ラーメン 駅前店\n住所: 名古屋市中村区名駅\n営業時間: 11:00〜24:00',
-      custom_prompt: '活気があり、食欲をそそるシズル感を重視したトーンで書いてください。',
-    },
-  });
-
-  // 7. Create ShopKeywords for THANX CREATE
+  // 5. Create ShopKeywords for THANX CREATE
   await prisma.shopKeywords.create({
     data: {
       shop_id: shop3.id,
@@ -116,9 +60,9 @@ async function main() {
     },
   });
 
-  console.log('🔑 Created ShopKeywords for all shops.');
+  console.log('🔑 Created ShopKeywords for THANX CREATE.');
 
-  // 8. Create ReplyTemplates (5 static templates for star3, star4, star5)
+  // 6. Create ReplyTemplates (5 static templates for star3, star4, star5)
   const defaultStar3 = [
     'ご来店および貴重なご意見をいただきありがとうございます。ご指摘いただいた点を真摯に受け止め、今後のサービス向上に役立ててまいります。',
     'この度はご来店いただきありがとうございました。至らない点があったことをお詫びするとともに、スタッフ一同、よりご満足いただけるお店づくりに努めてまいります。',
@@ -143,16 +87,14 @@ async function main() {
     'ご来店ありがとうございました！星5つの満点評価をいただき感謝の極みです。これからもお客様に愛され続けるお店を目指して頑張ります！'
   ];
 
-  for (const shopId of [shop1.id, shop2.id, shop3.id]) {
-    await prisma.replyTemplates.create({
-      data: {
-        shop_id: shopId,
-        templates_star3: JSON.stringify(defaultStar3),
-        templates_star4: JSON.stringify(defaultStar4),
-        templates_star5: JSON.stringify(defaultStar5),
-      },
-    });
-  }
+  await prisma.replyTemplates.create({
+    data: {
+      shop_id: shop3.id,
+      templates_star3: JSON.stringify(defaultStar3),
+      templates_star4: JSON.stringify(defaultStar4),
+      templates_star5: JSON.stringify(defaultStar5),
+    },
+  });
 
   console.log('📝 Seeded default static ReplyTemplates.');
 
