@@ -16,14 +16,7 @@ const port = process.env.PORT || 3000;
 // Enable CORS for frontend dynamically to support Vercel deployments and localhost
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    const isLocalhost = origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:');
-    const isVercel = origin.endsWith('.vercel.app') || origin === 'https://meo-seiha.vercel.app';
-    if (isLocalhost || isVercel) {
-      callback(null, true);
-    } else {
-      callback(null, true);
-    }
+    callback(null, origin || true);
   },
   credentials: true,
 }));
