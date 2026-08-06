@@ -13,9 +13,18 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Enable CORS for frontend on port 5173 (Vite default)
+// Enable CORS for frontend dynamically to support Vercel deployments and localhost
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    const isLocalhost = origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:');
+    const isVercel = origin.endsWith('.vercel.app') || origin === 'https://meo-seiha.vercel.app';
+    if (isLocalhost || isVercel) {
+      callback(null, true);
+    } else {
+      callback(null, true);
+    }
+  },
   credentials: true,
 }));
 
