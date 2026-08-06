@@ -15,11 +15,13 @@ const port = process.env.PORT || 3000;
 
 // Enable CORS for frontend dynamically to support Vercel deployments and localhost
 app.use(cors({
-  origin: (origin, callback) => {
-    callback(null, origin || true);
-  },
+  origin: true,
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 }));
+
+app.options('*', cors());
 
 app.use(express.json({ limit: '10mb' }));
 
