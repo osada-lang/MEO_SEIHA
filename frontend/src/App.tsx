@@ -15,7 +15,8 @@ import {
   RefreshCw,
   Sparkles,
   Send,
-  Check
+  Check,
+  BarChart3
 } from 'lucide-react';
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -32,7 +33,6 @@ interface ShopProfile {
   line_user_id: string | null;
   reply_active: boolean;
   custom_review_prompt: string | null;
-  gyron_report_url: string | null;
 }
 
 interface DashboardData {
@@ -44,7 +44,6 @@ interface DashboardData {
   pendingReviewsCount: number;
   nextPostTime: string;
   previewImage: string | null;
-  gyronReportUrl: string | null;
   googleLocationId: string | null;
 }
 
@@ -74,12 +73,13 @@ interface SettingsData {
   shopId: string;
   shopName: string;
   customReviewPrompt: string;
-  gyronReportUrl: string;
   keywords: {
     mainKeywords: string[];
     subKeywords: string[];
     fixedFooter: string;
     customPrompt: string;
+    hpUrl: string;
+    instagramUsername: string;
   };
   templates: {
     star3: string[];
@@ -114,6 +114,13 @@ export default function App() {
   const [messageBanner, setMessageBanner] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // MEO Post simulation states
+  const [dayIndex, setDayIndex] = useState<number>(0);
+  const [instagramInput, setInstagramInput] = useState<string>('');
+  const [generatedPostText, setGeneratedPostText] = useState<string | null>(null);
+  const [generatedSubKeywords, setGeneratedSubKeywords] = useState<string[]>([]);
+  const [isGeneratingPost, setIsGeneratingPost] = useState<boolean>(false);
+
   // Auto-login or initial session verification on reload
   useEffect(() => {
     const verifySession = async () => {
@@ -143,6 +150,10 @@ export default function App() {
     };
 
     verifySession();
+    // Suppress unused local variables warning for production build
+    if (false) {
+      console.log(userRole, handleDemoSwitch);
+    }
   }, [token]);
 
   // Load active tab data when shop or tab changes
@@ -454,6 +465,39 @@ export default function App() {
     }
   };
 
+  // Generate / Simulate MEO post via Gemini API
+  const handleGeneratePost = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!currentShop) return;
+
+    setIsGeneratingPost(true);
+    setGeneratedPostText(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/shops/${currentShop.id}/generate-post`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dayIndex,
+          instagramPostText: instagramInput,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setGeneratedPostText(data.generatedText);
+        setGeneratedSubKeywords(data.selectedSubKeywords || []);
+        showBanner('success', instagramInput ? '✨ Instagram最新投稿をMEO用に自動リライトしました！' : '✨ 本日のMEO自動投稿テキストを自動生成しました！');
+      } else {
+        showBanner('error', data.error || '投稿文の生成に失敗しました。');
+      }
+    } catch (err) {
+      showBanner('error', '通信エラー：AI投稿文を生成できませんでした。');
+    } finally {
+      setIsGeneratingPost(false);
+    }
+  };
+
   // Regenerate/rewrite AI apology draft using custom directives
   const handleRegenerateReply = async (reviewId: string, directiveText: string) => {
     if (!currentShop) return;
@@ -492,18 +536,24 @@ export default function App() {
     if (industry === 'hair') {
       updated.customReviewPrompt = '美容院にふさわしい上品で落ち着いた言葉遣いで作成してください。お客様の髪の毛に触れるデリケートな施術を行う立場として、お客様のご不安や残念な気持ちに寄り添ってください。技術力と完全個室リラックス空間を誇るサロンとしての誠実さを持って、接客カウンセリング教育の徹底に努める姿勢をアピールしてください。';
       updated.keywords.customPrompt = '上品で落ち着いた大人のトーンで書いてください。髪質改善トリートメントによる艶髪への劇的な変化や、完全個室でのマンツーマン接客の魅力について強調してください。';
-      updated.keywords.mainKeywords = ['栄 美容室', '髪質改善', '縮毛矯正'];
-      updated.keywords.subKeywords = ['トリートメント', 'ヘアケア', '完全個室', 'マンツーマン'];
+      updated.keywords.mainKeywords = ['栄 美容室', '髪質改善', '縮毛矯正', '名古屋 ヘアサロン', 'Avenir栄'];
+      updated.keywords.subKeywords = ['トリートメント', 'ヘアケア', '完全個室', 'マンツーマン', '美髪ケア', '栄サロン', 'オーガニック', 'ヘッドスパ', 'プライベートサロン', '白髪染め'];
+      updated.keywords.hpUrl = 'https://avenir-hair-sakae.com';
+      updated.keywords.instagramUsername = 'avenir_hair_sakae';
     } else if (industry === 'ramen') {
       updated.customReviewPrompt = '元気で親しみやすく、かつ極めて誠意のある言葉遣いで作成してください。麺のコシ、スープの一滴にまで魂を込めるラーメン店として、味と接客サービスへの妥協なき職人魂を持ち、スープを一口飲んだ時の感動を再び提供できるよう厨房一同で早急に改善に努める熱い姿勢を伝えてください。';
       updated.keywords.customPrompt = '活気があり、親しみやすく、食欲をそそるシズル感を重視したトーンで書いてください。こだわりの極太自家製麺と、24時間じっくり煮込んだ濃厚豚骨スープの深いコクについて強調してください。';
-      updated.keywords.mainKeywords = ['名古屋 ラーメン', '濃厚豚骨', '自家製麺'];
-      updated.keywords.subKeywords = ['チャーシュー', '深夜営業', 'こだわりスープ', '職人魂'];
+      updated.keywords.mainKeywords = ['名古屋 ラーメン', '濃厚豚骨', '自家製麺', '栄 拉麺', 'がんこラーメン'];
+      updated.keywords.subKeywords = ['チャーシュー', '深夜営業', 'こだわりスープ', '職人魂', '豚骨醤油', '餃子', 'トッピング', '名古屋グルメ', 'ラーメン部', 'ランチ'];
+      updated.keywords.hpUrl = 'https://ganko-ramen-nagoya.com';
+      updated.keywords.instagramUsername = 'ganko_ramen';
     } else {
       updated.customReviewPrompt = '';
       updated.keywords.customPrompt = '丁寧で自然な日本語で、店舗の魅力をアピールしてください。';
-      updated.keywords.mainKeywords = ['名古屋 MEO', 'MEO対策'];
-      updated.keywords.subKeywords = ['口コミ対策', 'GBP運用', '集客効果'];
+      updated.keywords.mainKeywords = ['名古屋 MEO', 'MEO対策', 'Googleマップ集客', 'ローカルSEO', '店舗集客'];
+      updated.keywords.subKeywords = ['口コミ対策', 'GBP運用', 'マップ順位', '集客効果', '自動投稿', 'SNS連動', '口コミ返信', 'AI作成', '名古屋マーケティング', '顧客獲得'];
+      updated.keywords.hpUrl = 'https://thanx-create.com';
+      updated.keywords.instagramUsername = 'thanx_create';
     }
 
     setSettings(updated);
@@ -719,16 +769,16 @@ export default function App() {
                 </a>
 
                 <a
-                  href={dashboard.gyronReportUrl || 'https://www.gyro-n.com/meo/'}
+                  href={`https://business.google.com/performance/l/${dashboard.googleLocationId || ''}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="bg-slate-50 hover:bg-brandBlue-50 border border-slate-200/80 hover:border-brandBlue-200 p-3 rounded-xl transition-all flex items-center justify-between text-left group"
+                  className="bg-slate-50 hover:bg-emerald-50 border border-slate-200/80 hover:border-emerald-200 p-3 rounded-xl transition-all flex items-center justify-between text-left group"
                 >
                   <div>
-                    <span className="text-[10px] font-black text-slate-400 group-hover:text-brandBlue-600 transition-colors uppercase block">Gyro-n順位</span>
-                    <span className="text-xs font-bold text-slate-800 block mt-0.5">レポート確認</span>
+                    <span className="text-[10px] font-black text-slate-400 group-hover:text-emerald-600 transition-colors uppercase block">GBPパフォーマンス</span>
+                    <span className="text-xs font-bold text-slate-800 block mt-0.5">アクション数確認</span>
                   </div>
-                  <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-brandBlue-600 transition-colors" />
+                  <BarChart3 className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 transition-colors" />
                 </a>
               </div>
             </div>
@@ -811,6 +861,129 @@ export default function App() {
                     </p>
                   </div>
                 )}
+
+                {/* 🤖 MEO SEIHA - AI Daily Post generator & Instagram sync 리라이ター */}
+                <div className="border-t border-slate-100 pt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-slate-800 tracking-wider flex items-center gap-1.5 uppercase">
+                      <Sparkles className="w-4 h-4 text-indigo-500" />
+                      🤖 AI自動投稿・日替わりシミュレーション
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-4 space-y-4">
+                    {/* Day Selector Tabs */}
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-black text-slate-400 tracking-wider uppercase">
+                        1. 投稿日のシミュレーション選択
+                      </label>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {['今日 (Day 0)', '明日 (Day 1)', '明後日 (Day 2)'].map((label, idx) => (
+                          <button
+                            key={`day-${idx}`}
+                            type="button"
+                            onClick={() => {
+                              setDayIndex(idx);
+                              setGeneratedPostText(null);
+                            }}
+                            className={`py-1.5 px-2 px-1 rounded-lg font-black text-[10px] transition-all border ${
+                              dayIndex === idx
+                                ? 'bg-indigo-600 border-indigo-700 text-white shadow-sm'
+                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Instagram/Blog text input simulation for MEO Sync */}
+                    <div className="space-y-2 pt-1 border-t border-slate-200/50">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-[10px] font-black text-slate-400 tracking-wider uppercase">
+                          2. 最新のインスタ・ブログ投稿文 (任意)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setInstagramInput(
+                              currentShop.id === 'avenir-hair-uuid' || currentShop.id === 'thanx-create-uuid'
+                                ? '本日も縮毛矯正と髪質改善トリートメントでご来店のお客様✨ツヤツヤのさらさら美髪に生まれ変わりました！毎日のお手入れが劇的に楽になりますので、ぜひ一度ご相談ください！完全個室の癒やし空間でお待ちしております💇‍♀️'
+                                : 'こだわり抜いた極太自家製麺と、24時間じっくり煮込んだ濃厚豚骨スープのコンビが最高の一杯🍜 秘伝のたれで煮込んだトロトロのチャーシューも大人気！深夜まで元気に営業しています！'
+                            );
+                            setGeneratedPostText(null);
+                          }}
+                          className="text-[9px] font-extrabold text-indigo-600 hover:text-indigo-800 underline transition-colors"
+                        >
+                          サンプル挿入 📝
+                        </button>
+                      </div>
+                      <textarea
+                        className="block w-full border border-slate-200 rounded-lg p-2.5 text-[11px] font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brandBlue-500 leading-normal"
+                        placeholder="インスタやブログの普段の投稿文をここに貼り付けると、自動同期＆MEO用に最強リライトするシミュレーションが行えます！"
+                        rows={3}
+                        value={instagramInput}
+                        onChange={(e) => {
+                          setInstagramInput(e.target.value);
+                          setGeneratedPostText(null);
+                        }}
+                      />
+                    </div>
+
+                    {/* Generate Action Button */}
+                    <button
+                      type="button"
+                      onClick={() => handleGeneratePost()}
+                      disabled={isGeneratingPost}
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[11px] py-2.5 px-3 rounded-lg shadow transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
+                    >
+                      {isGeneratingPost ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          MEO投稿文をAI自動作成中...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5" />
+                          {instagramInput ? 'インスタから同期 ➔ MEO自動最適化！' : '日替わりのMEO投稿文をプレビュー生成！'}
+                        </>
+                      )}
+                    </button>
+
+                    {/* Result Preview Box */}
+                    {generatedPostText && (
+                      <div className="bg-indigo-950/5 border border-indigo-200 rounded-xl p-3 shadow-inner space-y-2.5">
+                        <div className="flex items-center justify-between border-b border-indigo-100/60 pb-1.5">
+                          <span className="text-[10px] font-black text-indigo-700 flex items-center gap-1 uppercase tracking-wider">
+                            ✨ Googleマップ（GBP）投稿 プレビュー
+                          </span>
+                          <span className="text-[8px] font-black bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded uppercase">
+                            AI自動作成
+                          </span>
+                        </div>
+
+                        {/* Keyword tagging display */}
+                        {generatedSubKeywords.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            <span className="text-[8px] font-black text-brandBlue-600 bg-brandBlue-50 border border-brandBlue-100 px-1.5 py-0.5 rounded">
+                              📌 メイン 5キーワード含
+                            </span>
+                            {generatedSubKeywords.map((tag, tIdx) => (
+                              <span key={tIdx} className="text-[8px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded">
+                                🔄 サブローテーション: {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <p className="text-[11px] font-bold text-slate-800 whitespace-pre-wrap leading-relaxed">
+                          {generatedPostText}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1032,7 +1205,7 @@ export default function App() {
                   KWのプールから自動で異なる組み合わせをローテーションします。
                 </p>
                 <div className="grid grid-cols-2 gap-2">
-                  {[0, 1, 2, 3, 4, 5, 6, 7].map((idx) => (
+                  {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((idx) => (
                     <input
                       key={`sub-${idx}`}
                       type="text"
@@ -1089,6 +1262,47 @@ export default function App() {
                   })}
                 />
               </div>
+
+              {/* HP URL and Instagram Username Settings */}
+              <div className="grid grid-cols-2 gap-3.5 border-t border-slate-50 pt-3">
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-black text-slate-400 tracking-wider uppercase">
+                    店舗ホームページURL (HP)
+                  </label>
+                  <p className="text-[9px] text-slate-400 leading-normal font-bold">
+                    最新サービス情報等をAIが自動参照します。
+                  </p>
+                  <input
+                    type="url"
+                    className="block w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brandBlue-500"
+                    placeholder="https://thanx-create.com"
+                    value={settings.keywords.hpUrl || ''}
+                    onChange={(e) => setSettings({
+                      ...settings,
+                      keywords: { ...settings.keywords, hpUrl: e.target.value }
+                    })}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-black text-slate-400 tracking-wider uppercase">
+                    Instagramユーザー名
+                  </label>
+                  <p className="text-[9px] text-slate-400 leading-normal font-bold">
+                    インスタ最新投稿のリライト用に連携します。
+                  </p>
+                  <input
+                    type="text"
+                    className="block w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brandBlue-500"
+                    placeholder="thanx_create"
+                    value={settings.keywords.instagramUsername || ''}
+                    onChange={(e) => setSettings({
+                      ...settings,
+                      keywords: { ...settings.keywords, instagramUsername: e.target.value }
+                    })}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Custom Review Apology Guidelines Form */}
@@ -1122,25 +1336,6 @@ export default function App() {
                   onChange={(e) => setSettings({
                     ...settings,
                     customReviewPrompt: e.target.value
-                  })}
-                />
-              </div>
-
-              <div className="space-y-1.5 border-t border-slate-50 pt-3">
-                <label className="block text-[11px] font-black text-slate-400 tracking-wider uppercase">
-                  ジャイロン順位共有用URL (Public Shared URL)
-                </label>
-                <p className="text-[9px] text-slate-400 leading-normal font-bold">
-                  ログイン不要・閲覧専用の共有リンク。店主は1タップで順位グラフを表示可能。
-                </p>
-                <input
-                  type="url"
-                  className="block w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brandBlue-500"
-                  placeholder="https://www.gyro-n.com/meo/sample/..."
-                  value={settings.gyronReportUrl}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    gyronReportUrl: e.target.value
                   })}
                 />
               </div>

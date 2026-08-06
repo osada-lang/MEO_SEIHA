@@ -26,7 +26,6 @@ async function main() {
       line_user_id: null,
       reply_active: false,
       custom_review_prompt: null,
-      gyron_report_url: null,
     },
   });
 
@@ -43,7 +42,6 @@ async function main() {
       line_user_id: process.env.LINE_USER_ID || 'U205e0595cff6e3882288962525941500',
       reply_active: true,
       custom_review_prompt: '', // No custom review prompt (Standard default)
-      gyron_report_url: 'https://www.gyro-n.com/meo/sample/thanx',
     },
   });
 
@@ -53,10 +51,12 @@ async function main() {
   await prisma.shopKeywords.create({
     data: {
       shop_id: shop3.id,
-      main_keywords: JSON.stringify(['名古屋 MEO', 'MEO対策']),
-      sub_keywords: JSON.stringify(['口コミ対策', 'GBP運用', 'マップ順位', '集客効果']),
+      main_keywords: JSON.stringify(['名古屋 MEO', 'MEO対策', 'Googleマップ集客', 'ローカルSEO', 'THANX CREATE']),
+      sub_keywords: JSON.stringify(['口コミ対策', 'GBP運用', 'マップ順位', '集客効果', '名古屋マーケティング', '店舗集客', '自動投稿', 'SNS連動', '口コミ返信', 'AI作成']),
       fixed_footer: '店舗名: 合同会社THANX CREATE\n住所: 名古屋市中区栄1丁目23-29',
       custom_prompt: '丁寧で自然なトーンで、MEO集客サポートの魅力を訴求してください。',
+      hp_url: 'https://thanx-create.com',
+      instagram_username: 'thanx_create',
     },
   });
 

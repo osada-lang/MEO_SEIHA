@@ -21,7 +21,6 @@ model Shop {
   line_user_id          String?
   reply_active          Boolean       @default(true)
   custom_review_prompt  String?
-  gyron_report_url      String?
   created_at            DateTime      @default(now())
   updated_at            DateTime      @updatedAt
 
@@ -31,13 +30,15 @@ model Shop {
 }
 
 model ShopKeywords {
-  id            String   @id @default(uuid())
-  shop_id       String   @unique
-  main_keywords String   // JSON-serialized string of main keywords array
-  sub_keywords  String   // JSON-serialized string of sub keywords array
-  fixed_footer  String?
-  custom_prompt String?
-  updated_at    DateTime @updatedAt
+  id                 String   @id @default(uuid())
+  shop_id            String   @unique
+  main_keywords      String   // JSON-serialized string of main keywords array
+  sub_keywords       String   // JSON-serialized string of sub keywords array
+  fixed_footer       String?
+  custom_prompt      String?
+  hp_url             String?
+  instagram_username String?
+  updated_at         DateTime @updatedAt
 
   shop          Shop     @relation(fields: [shop_id], references: [id], onDelete: Cascade)
 }

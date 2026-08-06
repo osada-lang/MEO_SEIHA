@@ -83,7 +83,6 @@ app.post('/api/auth/login', async (req, res) => {
         line_user_id: shop.line_user_id,
         reply_active: shop.reply_active,
         custom_review_prompt: shop.custom_review_prompt,
-        gyron_report_url: shop.gyron_report_url,
       }
     });
   } catch (error: any) {
@@ -127,7 +126,6 @@ app.get('/api/auth/me', async (req, res) => {
         line_user_id: shop.line_user_id,
         reply_active: shop.reply_active,
         custom_review_prompt: shop.custom_review_prompt,
-        gyron_report_url: shop.gyron_report_url,
       }
     });
   } catch (error) {
@@ -207,7 +205,6 @@ app.get('/api/shops/:shopId/dashboard', async (req, res) => {
       pendingReviewsCount,
       nextPostTime: '本日 12:00 予定',
       previewImage,
-      gyronReportUrl: shop.gyron_report_url,
       googleLocationId: shop.google_location_id,
     });
   } catch (error) {
@@ -262,12 +259,13 @@ app.get('/api/shops/:shopId/settings', async (req, res) => {
       shopId: shop.id,
       shopName: shop.name,
       customReviewPrompt: shop.custom_review_prompt || '',
-      gyronReportUrl: shop.gyron_report_url || '',
       keywords: {
         mainKeywords,
         subKeywords,
         fixedFooter: shop.keywords?.fixed_footer || '',
         customPrompt: shop.keywords?.custom_prompt || '',
+        hpUrl: shop.keywords?.hp_url || '',
+        instagramUsername: shop.keywords?.instagram_username || '',
       },
       templates: {
         star3: star3Templates,
@@ -284,7 +282,7 @@ app.get('/api/shops/:shopId/settings', async (req, res) => {
 // POST /api/shops/:shopId/settings
 app.post('/api/shops/:shopId/settings', async (req, res) => {
   const { shopId } = req.params;
-  const { customReviewPrompt, gyronReportUrl, keywords, templates } = req.body;
+  const { customReviewPrompt, keywords, templates } = req.body;
 
   try {
     // 1. Update Shop Profile details
@@ -292,7 +290,6 @@ app.post('/api/shops/:shopId/settings', async (req, res) => {
       where: { id: shopId },
       data: {
         custom_review_prompt: customReviewPrompt,
-        gyron_report_url: gyronReportUrl,
       }
     });
 
@@ -308,6 +305,8 @@ app.post('/api/shops/:shopId/settings', async (req, res) => {
           sub_keywords: subKeywordsStr,
           fixed_footer: keywords.fixedFooter,
           custom_prompt: keywords.customPrompt,
+          hp_url: keywords.hpUrl,
+          instagram_username: keywords.instagramUsername,
         },
         create: {
           shop_id: shopId,
@@ -315,6 +314,8 @@ app.post('/api/shops/:shopId/settings', async (req, res) => {
           sub_keywords: subKeywordsStr,
           fixed_footer: keywords.fixedFooter,
           custom_prompt: keywords.customPrompt,
+          hp_url: keywords.hpUrl,
+          instagram_username: keywords.instagramUsername,
         }
       });
     }
@@ -650,6 +651,116 @@ app.post('/api/shops/:shopId/test-line-alert', async (req, res) => {
   } catch (error: any) {
     console.error('❌ Test LINE alert error:', error);
     return res.status(500).json({ error: error.message || 'LINEテスト通知の送信に失敗しました。' });
+  }
+});
+
+// POST /api/shops/:shopId/generate-post
+app.post('/api/shops/:shopId/generate-post', async (req, res) => {
+  const { shopId } = req.params;
+  const { dayIndex, instagramPostText } = req.body;
+
+  try {
+    const shop = await prisma.shop.findUnique({
+      where: { id: shopId },
+      include: { keywords: true }
+    });
+
+    if (!shop) {
+      return res.status(404).json({ error: '店舗が見つかりませんでした。' });
+    }
+
+    if (!shop.keywords) {
+      return res.status(400).json({ error: '自動投稿用キーワードが設定されていません。' });
+    }
+
+    const mainKeywords: string[] = JSON.parse(shop.keywords.main_keywords || '[]');
+    const subKeywords: string[] = JSON.parse(shop.keywords.sub_keywords || '[]');
+    const fixedFooter = shop.keywords.fixed_footer || '';
+    const customPrompt = shop.keywords.custom_prompt || '';
+    const hpUrl = shop.keywords.hp_url || '';
+    const instagramUsername = shop.keywords.instagram_username || '';
+
+    // Choose 3 rotated sub keywords based on dayIndex
+    const index = parseInt(dayIndex || '0', 10);
+    const selectedSubKeywords: string[] = [];
+    if (subKeywords.length > 0) {
+      for (let i = 0; i < Math.min(3, subKeywords.length); i++) {
+        const wordIndex = (index * 3 + i) % subKeywords.length;
+        selectedSubKeywords.push(subKeywords[wordIndex]);
+      }
+    }
+
+    // Call Gemini to generate post text
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      return res.status(500).json({ error: 'Gemini APIキーが設定されていません。' });
+    }
+
+    const { GoogleGenerativeAI } = require('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(geminiApiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+    let prompt = '';
+    if (instagramPostText && instagramPostText.trim() !== '') {
+      prompt = `
+あなたは店舗「${shop.name}」のオーナー代理です。
+最新のInstagram投稿を取り込み、Googleマイビジネス（MEO）に最適化された魅力的な最新情報投稿（おしらせ）に「自動リライト」してください。
+
+【元のInstagram投稿内容】
+「${instagramPostText}」
+
+【リライトの必須ルール】
+1. メインキーワード（毎回必ず使用）：[ ${mainKeywords.join(', ')} ] の5つを、文章全体の自然な文脈にそって【すべて】必ず含めてください。
+2. 本日の日替わりサブキーワード：[ ${selectedSubKeywords.join(', ')} ] を、文章の中に自然に盛り込んでください。
+3. 店舗のホームページURLは「${hpUrl}」です。興味を持ったお客様を誘導するように、文末や文章内に自然に配置してください。
+4. Instagramユーザー名は「@${instagramUsername}」です。インスタ連動であることを軽く紹介したり、プロフィールへ促す文章を含めてください。
+5. 親近感がありつつ、Googleマップで検索上位（MEO対策）を狙えるように、サービスの特徴や魅力を分かりやすくアピールしてください。
+6. 絵文字は適度に使って、明るく見栄えの良い文章（200文字〜300文字以内）に仕上げてください。
+7. 文末には、以下の「固定フッター署名」を必ず合体させてください。
+
+【固定フッター署名（必ず最後に合体させてください）】
+${fixedFooter}
+
+返される内容はリライトした完成本文のみとし、説明や挨拶、\`\`\`等のMarkdown装飾は一切含めないでください。`;
+    } else {
+      prompt = `
+    あなたは店舗「${shop.name}」のオーナー代理です。
+    店舗のMEO自動投稿用テキスト（日替わり最新情報）を新規に1件自動作成してください。
+
+    【店舗情報】
+    - 店舗名: ${shop.name}
+    - 店舗ホームページURL: ${hpUrl}
+    - Instagramユーザー名: @${instagramUsername}
+    - 個別プロンプト指示: ${customPrompt || 'なし'}
+
+    【作成の必須ルール】
+    1. メインキーワード（毎回必ず使用）：[ ${mainKeywords.join(', ')} ] の5つを、文章全体の自然な文脈にそって【すべて】必ず含めてください。
+    2. 本日の日替わりサブキーワード：[ ${selectedSubKeywords.join(', ')} ] を、文章の中に自然に盛り込んでください。
+    3. ホームページURL「${hpUrl}」やInstagramアカウント「@${instagramUsername}」に触れ、最新情報や日常の様子を確認してもらうよう自然に誘導してください。
+    4. dayIndex「${index}」に基づき、曜日や日常の切り口（季節感、お客様へのお役立ち、サービス紹介、今日のスタッフの一言など）を変化させ、昨日とは異なるアングルから魅力的な内容にしてください。
+    5. MEO検索対策として非常に有利で、一般客が「行ってみたい」と思える明るく親しみやすい文章（200文字〜300文字以内）に仕上げてください。
+    6. 絵文字は適度に使って、見栄え良く構成してください。
+    7. 文末には、以下の「固定フッター署名」を必ず合体させてください。
+
+    【固定フッター署名（必ず最後に合体させてください）】
+    ${fixedFooter}
+
+    返される内容は自動作成した完成本文のみとし、説明や挨拶、\`\`\`等のMarkdown装飾は一切含めないでください。`;
+    }
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const generatedText = response.text().trim().replace(/```/g, '');
+
+    return res.json({
+      success: true,
+      dayIndex: index,
+      selectedSubKeywords,
+      generatedText,
+    });
+  } catch (error: any) {
+    console.error('❌ Post generation error:', error);
+    return res.status(500).json({ error: error.message || 'AI投稿テキストの自動生成に失敗しました。' });
   }
 });
 
