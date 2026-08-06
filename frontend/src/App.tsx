@@ -528,38 +528,6 @@ export default function App() {
     }
   };
 
-  // Set preset prompt templates for specific industries
-  const applyIndustryTemplate = (industry: 'hair' | 'ramen' | 'standard') => {
-    if (!settings) return;
-
-    let updated = { ...settings };
-
-    if (industry === 'hair') {
-      updated.customReviewPrompt = '美容院にふさわしい上品で落ち着いた言葉遣いで作成してください。お客様の髪の毛に触れるデリケートな施術を行う立場として、お客様のご不安や残念な気持ちに寄り添ってください。技術力と完全個室リラックス空間を誇るサロンとしての誠実さを持って、接客カウンセリング教育の徹底に努める姿勢をアピールしてください。';
-      updated.keywords.customPrompt = '上品で落ち着いた大人のトーンで書いてください。髪質改善トリートメントによる艶髪への劇的な変化や、完全個室でのマンツーマン接客の魅力について強調してください。';
-      updated.keywords.mainKeywords = ['栄 美容室', '髪質改善', '縮毛矯正', '名古屋 ヘアサロン', 'Avenir栄'];
-      updated.keywords.subKeywords = ['トリートメント', 'ヘアケア', '完全個室', 'マンツーマン', '美髪ケア', '栄サロン', 'オーガニック', 'ヘッドスパ', 'プライベートサロン', '白髪染め'];
-      updated.keywords.hpUrl = 'https://avenir-hair-sakae.com';
-      updated.keywords.instagramUsername = 'avenir_hair_sakae';
-    } else if (industry === 'ramen') {
-      updated.customReviewPrompt = '元気で親しみやすく、かつ極めて誠意のある言葉遣いで作成してください。麺のコシ、スープの一滴にまで魂を込めるラーメン店として、味と接客サービスへの妥協なき職人魂を持ち、スープを一口飲んだ時の感動を再び提供できるよう厨房一同で早急に改善に努める熱い姿勢を伝えてください。';
-      updated.keywords.customPrompt = '活気があり、親しみやすく、食欲をそそるシズル感を重視したトーンで書いてください。こだわりの極太自家製麺と、24時間じっくり煮込んだ濃厚豚骨スープの深いコクについて強調してください。';
-      updated.keywords.mainKeywords = ['名古屋 ラーメン', '濃厚豚骨', '自家製麺', '栄 拉麺', 'がんこラーメン'];
-      updated.keywords.subKeywords = ['チャーシュー', '深夜営業', 'こだわりスープ', '職人魂', '豚骨醤油', '餃子', 'トッピング', '名古屋グルメ', 'ラーメン部', 'ランチ'];
-      updated.keywords.hpUrl = 'https://ganko-ramen-nagoya.com';
-      updated.keywords.instagramUsername = 'ganko_ramen';
-    } else {
-      updated.customReviewPrompt = '';
-      updated.keywords.customPrompt = '丁寧で自然な日本語で、店舗の魅力をアピールしてください。';
-      updated.keywords.mainKeywords = ['名古屋 MEO', 'MEO対策', 'Googleマップ集客', 'ローカルSEO', '店舗集客'];
-      updated.keywords.subKeywords = ['口コミ対策', 'GBP運用', 'マップ順位', '集客効果', '自動投稿', 'SNS連動', '口コミ返信', 'AI作成', '名古屋マーケティング', '顧客獲得'];
-      updated.keywords.hpUrl = 'https://thanx-create.com';
-      updated.keywords.instagramUsername = 'thanx_create';
-    }
-
-    setSettings(updated);
-    showBanner('success', `「${industry === 'hair' ? '美容室' : industry === 'ramen' ? 'ラーメン店' : '標準'}」の業界テンプレートを挿入しました。[設定を保存する] をタップしてSQLiteに保存してください。`);
-  };
 
   // loading screens
   if (isPageLoading) {
@@ -838,13 +806,7 @@ export default function App() {
                     <div className="relative rounded-xl overflow-hidden border border-slate-200/80 aspect-video bg-slate-900/5 flex items-center justify-center">
                       {/* For prototype, show dynamic placeholder or seeded pictures based on shop */}
                       <img
-                        src={
-                          currentShop.id === 'avenir-hair-uuid'
-                            ? 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=80&w=600'
-                            : currentShop.id === 'ganko-ramen-uuid'
-                            ? 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&q=80&w=600'
-                            : 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=600'
-                        }
+                        src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=600"
                         alt="Next Scheduled Post Preview"
                         className="object-cover w-full h-full"
                       />
@@ -909,9 +871,7 @@ export default function App() {
                           type="button"
                           onClick={() => {
                             setInstagramInput(
-                              currentShop.id === 'avenir-hair-uuid' || currentShop.id === 'thanx-create-uuid'
-                                ? '本日も縮毛矯正と髪質改善トリートメントでご来店のお客様✨ツヤツヤのさらさら美髪に生まれ変わりました！毎日のお手入れが劇的に楽になりますので、ぜひ一度ご相談ください！完全個室の癒やし空間でお待ちしております💇‍♀️'
-                                : 'こだわり抜いた極太自家製麺と、24時間じっくり煮込んだ濃厚豚骨スープのコンビが最高の一杯🍜 秘伝のたれで煮込んだトロトロのチャーシューも大人気！深夜まで元気に営業しています！'
+                              '【店舗集客でお悩みのオーナー様へ】Googleマップでの表示順位を高めるMEO対策や、競合に負けないローカルSEO集客について最新のノウハウを公開中！実績多数の合同会社THANX CREATEが、初期設定から口コミ獲得の仕組み化まで一気通貫で徹底サポートいたします。ぜひWebサイトまたはお電話からお気軽にお問い合わせください！📈'
                             );
                             setGeneratedPostText(null);
                           }}
@@ -1129,39 +1089,6 @@ export default function App() {
         {/* 3️⃣ SCREEN: Settings */}
         {activeTab === 'settings' && settings && (
           <form onSubmit={handleSaveSettings} className="space-y-4">
-            {/* Industry selector presets block */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-3 text-white no-print">
-              <h3 className="text-sm font-extrabold text-brandBlue-400 flex items-center gap-1.5">
-                <Sparkles className="w-4.5 h-4.5" />
-                業界別テンプレート適用 (1タップ入力)
-              </h3>
-              <p className="text-[10px] text-slate-400 font-bold leading-relaxed">
-                業界ごとの最高なAI投稿スタイル、および口コミ返信ガイドプロンプトを1タップで自動挿入できます。
-              </p>
-              <div className="grid grid-cols-3 gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => applyIndustryTemplate('hair')}
-                  className="bg-indigo-950/40 hover:bg-indigo-950 border border-indigo-900 hover:border-indigo-700 text-indigo-300 font-bold text-[10px] py-2 px-1 rounded-xl transition-all"
-                >
-                  💇 美容室テンプレート
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyIndustryTemplate('ramen')}
-                  className="bg-amber-950/40 hover:bg-amber-950 border border-amber-900 hover:border-amber-700 text-amber-300 font-bold text-[10px] py-2 px-1 rounded-xl transition-all"
-                >
-                  🍜 ラーメンテンプレート
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyIndustryTemplate('standard')}
-                  className="bg-slate-950/60 hover:bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 font-bold text-[10px] py-2 px-1 rounded-xl transition-all"
-                >
-                  🏢 標準テンプレート
-                </button>
-              </div>
-            </div>
 
             {/* Auto post settings */}
             <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
