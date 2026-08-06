@@ -53,6 +53,7 @@ interface DriveImage {
   mimeType: string;
   size: string;
   createdTime: string;
+  dataUrl?: string;
 }
 
 interface ReviewLog {
@@ -1091,14 +1092,16 @@ export default function App() {
                         {/* Mock image thumbnail generator based on unsplash to look beautiful in demo */}
                         <img
                           src={
-                            photo.id.startsWith('mock-')
-                              ? `https://images.unsplash.com/photo-${
-                                  photo.id === 'mock-img-001' ? '1560066984-138dadb4c035' :
-                                  photo.id === 'mock-img-002' ? '1569718212165-3a8278d5f624' :
-                                  photo.id === 'mock-img-003' ? '1497366216548-37526070297c' :
-                                  photo.id === 'mock-img-004' ? '1514933651103-005eec06c04b' : '1554118811-1e0d58224f24'
-                                }?auto=format&fit=crop&q=80&w=300`
-                              : 'https://images.unsplash.com/photo-1542038784456-1ea8e935640e?auto=format&fit=crop&q=80&w=300' // Generic photo icon represent for live upload
+                            photo.dataUrl || (
+                              photo.id.startsWith('mock-')
+                                ? `https://images.unsplash.com/photo-${
+                                    photo.id === 'mock-img-001' ? '1560066984-138dadb4c035' :
+                                    photo.id === 'mock-img-002' ? '1569718212165-3a8278d5f624' :
+                                    photo.id === 'mock-img-003' ? '1497366216548-37526070297c' :
+                                    photo.id === 'mock-img-004' ? '1514933651103-005eec06c04b' : '1554118811-1e0d58224f24'
+                                  }?auto=format&fit=crop&q=80&w=300`
+                                : 'https://images.unsplash.com/photo-1542038784456-1ea8e935640e?auto=format&fit=crop&q=80&w=300' // Generic photo icon represent for live upload
+                            )
                           }
                           alt={photo.name}
                           className="object-cover w-full h-full"

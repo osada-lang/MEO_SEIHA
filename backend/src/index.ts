@@ -44,6 +44,7 @@ interface MockFile {
   mimeType: string;
   size?: string;
   createdTime: string;
+  dataUrl?: string;
 }
 
 let mockDriveFiles: MockFile[] = [];
@@ -419,12 +420,14 @@ app.post('/api/shops/:shopId/drive-images/upload', async (req, res) => {
 
     if (!auth) {
       // Simulate mock upload
+      const dataUrl = `data:${mimeType};base64,${base64Data}`;
       const newMockFile: MockFile = {
         id: `mock-img-${Date.now()}`,
         name: fileName,
         mimeType: mimeType,
         size: `${(fileBuffer.length / (1024 * 1024)).toFixed(1)} MB`,
         createdTime: new Date().toISOString(),
+        dataUrl,
       };
       mockDriveFiles.unshift(newMockFile);
       console.log(`🟢 [モックアップロード成功] ${fileName} がストックに追加されました。`);
@@ -472,12 +475,14 @@ app.post('/api/shops/:shopId/drive-images/upload', async (req, res) => {
     // Graceful fallback to mock upload if Google Drive credentials or folder is invalid
     try {
       const fileBuffer = Buffer.from(base64Data, 'base64');
+      const dataUrl = `data:${mimeType};base64,${base64Data}`;
       const newMockFile: MockFile = {
         id: `mock-img-${Date.now()}`,
         name: fileName,
         mimeType: mimeType,
         size: `${(fileBuffer.length / (1024 * 1024)).toFixed(1)} MB`,
         createdTime: new Date().toISOString(),
+        dataUrl,
       };
       mockDriveFiles.unshift(newMockFile);
       console.log(`🟢 [モックアップロード成功（フォールバック）] ${fileName} がストックに追加されました。`);
