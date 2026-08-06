@@ -469,7 +469,27 @@ app.post('/api/shops/:shopId/drive-images/upload', async (req, res) => {
     });
   } catch (error: any) {
     console.error('❌ Image upload error:', error.message || error);
-    return res.status(500).json({ error: 'Google Driveへの画像アップロードに失敗しました。' });
+    // Graceful fallback to mock upload if Google Drive credentials or folder is invalid
+    try {
+      const fileBuffer = Buffer.from(base64Data, 'base64');
+      const newMockFile: MockFile = {
+        id: `mock-img-${Date.now()}`,
+        name: fileName,
+        mimeType: mimeType,
+        size: `${(fileBuffer.length / (1024 * 1024)).toFixed(1)} MB`,
+        createdTime: new Date().toISOString(),
+      };
+      mockDriveFiles.unshift(newMockFile);
+      console.log(`🟢 [モックアップロード成功（フォールバック）] ${fileName} がストックに追加されました。`);
+      return res.json({
+        success: true,
+        file: newMockFile,
+        isMock: true,
+        warning: 'Google DriveのフォルダIDまたは認証が無効なため、代わりにローカルストレージ（モック）に保存しました。'
+      });
+    } catch (fallbackError: any) {
+      return res.status(500).json({ error: '画像のアップロードおよびフォールバック処理に失敗しました。' });
+    }
   }
 });
 
