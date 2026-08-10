@@ -1086,13 +1086,13 @@ export default function App() {
                   type="button"
                   onClick={handleToggleReply}
                   disabled={isToggling}
-                  className={`relative inline-flex h-7.5 w-13.5 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                     dashboard.replyActive ? 'bg-emerald-500' : 'bg-slate-300'
                   }`}
                 >
                   <span
-                    className={`pointer-events-none inline-block h-6.5 w-6.5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                      dashboard.replyActive ? 'translate-x-6' : 'translate-x-0'
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      dashboard.replyActive ? 'translate-x-5' : 'translate-x-0'
                     }`}
                   />
                 </button>
@@ -1227,13 +1227,13 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setSettings({ ...settings, replyActive: !settings.replyActive })}
-                  className={`relative inline-flex h-7.5 w-13.5 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                     settings.replyActive ? 'bg-emerald-500' : 'bg-slate-300'
                   }`}
                 >
                   <span
-                    className={`pointer-events-none inline-block h-6.5 w-6.5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                      settings.replyActive ? 'translate-x-6' : 'translate-x-0'
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      settings.replyActive ? 'translate-x-5' : 'translate-x-0'
                     }`}
                   />
                 </button>
@@ -1487,7 +1487,7 @@ export default function App() {
                 ) : (
                   <>
                     <Check className="w-4.5 h-4.5" />
-                    設定をSQLiteに保存する
+                    設定を保存する
                   </>
                 )}
               </button>
