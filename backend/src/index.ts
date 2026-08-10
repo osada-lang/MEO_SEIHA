@@ -207,6 +207,48 @@ app.get('/api/shops/:shopId/dashboard', async (req, res) => {
       }
     });
 
+    // Determine 3-day drafts
+    let draftPostsArr = [];
+    if (shop.keywords) {
+      if (shop.keywords.draft_posts) {
+        try {
+          draftPostsArr = JSON.parse(shop.keywords.draft_posts);
+        } catch (pErr) {
+          console.error('❌ Failed to parse draft_posts JSON:', pErr);
+        }
+      }
+      
+      // If empty, auto-generate 3-day drafts using Gemini AI
+      if (draftPostsArr.length === 0) {
+        console.log(`🤖 First-time auto-generating 3-day drafts for shop: ${shop.name}`);
+        try {
+          const day0 = await generateSingleDraft(shop, 0);
+          const day1 = await generateSingleDraft(shop, 1);
+          const day2 = await generateSingleDraft(shop, 2);
+
+          draftPostsArr = [
+            { dayIndex: 0, title: '今日投稿予定の下書き (Day 0)', text: day0.text, subKeywords: day0.subKeywords },
+            { dayIndex: 1, title: '明日投稿予定の下書き (Day 1)', text: day1.text, subKeywords: day1.subKeywords },
+            { dayIndex: 2, title: '明後日投稿予定の下書き (Day 2)', text: day2.text, subKeywords: day2.subKeywords },
+          ];
+
+          // Save to database
+          await prisma.shopKeywords.update({
+            where: { shop_id: shopId },
+            data: { draft_posts: JSON.stringify(draftPostsArr) },
+          });
+        } catch (genError) {
+          console.error('❌ Failed to first-time generate drafts:', genError);
+          // Fallback static drafts to avoid crashing Dashboard load
+          draftPostsArr = [
+            { dayIndex: 0, title: '今日投稿予定の下書き (Day 0)', text: `${shop.name}の本日のおしらせ下書きです。`, subKeywords: [] },
+            { dayIndex: 1, title: '明日投稿予定の下書き (Day 1)', text: `${shop.name}の明日のおしらせ下書きです。`, subKeywords: [] },
+            { dayIndex: 2, title: '明後日投稿予定の下書き (Day 2)', text: `${shop.name}の明後日のおしらせ下書きです。`, subKeywords: [] },
+          ];
+        }
+      }
+    }
+
     // Dummy preview image (use the first mock file or some sample image)
     const previewImage = imageCount > 0 ? '/assets/mock-preview.jpg' : null;
 
@@ -220,6 +262,7 @@ app.get('/api/shops/:shopId/dashboard', async (req, res) => {
       nextPostTime: '本日 12:00 予定',
       previewImage,
       googleLocationId: shop.google_location_id,
+      draftPosts: draftPostsArr,
     });
   } catch (error) {
     console.error('❌ Dashboard fetch error:', error);
@@ -272,6 +315,7 @@ app.get('/api/shops/:shopId/settings', async (req, res) => {
     return res.json({
       shopId: shop.id,
       shopName: shop.name,
+      replyActive: shop.reply_active,
       customReviewPrompt: shop.custom_review_prompt || '',
       keywords: {
         mainKeywords,
@@ -279,7 +323,10 @@ app.get('/api/shops/:shopId/settings', async (req, res) => {
         fixedFooter: shop.keywords?.fixed_footer || '',
         customPrompt: shop.keywords?.custom_prompt || '',
         hpUrl: shop.keywords?.hp_url || '',
-        instagramUsername: shop.keywords?.instagram_username || '',
+        tabelogUrl: shop.keywords?.tabelog_url || '',
+        hotpepperUrl: shop.keywords?.hotpepper_url || '',
+        gurunaviUrl: shop.keywords?.gurunavi_url || '',
+        gbpActionUrl: shop.keywords?.gbp_action_url || '',
       },
       templates: {
         star3: star3Templates,
@@ -296,7 +343,7 @@ app.get('/api/shops/:shopId/settings', async (req, res) => {
 // POST /api/shops/:shopId/settings
 app.post('/api/shops/:shopId/settings', async (req, res) => {
   const { shopId } = req.params;
-  const { customReviewPrompt, keywords, templates } = req.body;
+  const { replyActive, customReviewPrompt, keywords, templates } = req.body;
 
   try {
     // 1. Update Shop Profile details
@@ -304,6 +351,7 @@ app.post('/api/shops/:shopId/settings', async (req, res) => {
       where: { id: shopId },
       data: {
         custom_review_prompt: customReviewPrompt,
+        reply_active: typeof replyActive === 'boolean' ? replyActive : true,
       }
     });
 
@@ -320,7 +368,10 @@ app.post('/api/shops/:shopId/settings', async (req, res) => {
           fixed_footer: keywords.fixedFooter,
           custom_prompt: keywords.customPrompt,
           hp_url: keywords.hpUrl,
-          instagram_username: keywords.instagramUsername,
+          tabelog_url: keywords.tabelogUrl,
+          hotpepper_url: keywords.hotpepperUrl,
+          gurunavi_url: keywords.gurunaviUrl,
+          gbp_action_url: keywords.gbpActionUrl,
         },
         create: {
           shop_id: shopId,
@@ -329,7 +380,10 @@ app.post('/api/shops/:shopId/settings', async (req, res) => {
           fixed_footer: keywords.fixedFooter,
           custom_prompt: keywords.customPrompt,
           hp_url: keywords.hpUrl,
-          instagram_username: keywords.instagramUsername,
+          tabelog_url: keywords.tabelogUrl,
+          hotpepper_url: keywords.hotpepperUrl,
+          gurunavi_url: keywords.gurunaviUrl,
+          gbp_action_url: keywords.gbpActionUrl,
         }
       });
     }
@@ -692,90 +746,59 @@ app.post('/api/shops/:shopId/test-line-alert', async (req, res) => {
   }
 });
 
-// POST /api/shops/:shopId/generate-post
-app.post('/api/shops/:shopId/generate-post', async (req, res) => {
-  const { shopId } = req.params;
-  const { dayIndex, instagramPostText } = req.body;
+// Helper to generate a single day's MEO draft post using Gemini AI
+async function generateSingleDraft(shop: any, dayIndex: number): Promise<{ text: string, subKeywords: string[] }> {
+  const mainKeywords: string[] = JSON.parse(shop.keywords?.main_keywords || '[]');
+  const subKeywords: string[] = JSON.parse(shop.keywords?.sub_keywords || '[]');
+  const fixedFooter = shop.keywords?.fixed_footer || '';
+  const customPrompt = shop.keywords?.custom_prompt || '';
+  const hpUrl = shop.keywords?.hp_url || '';
+  const tabelogUrl = shop.keywords?.tabelog_url || '';
+  const hotpepperUrl = shop.keywords?.hotpepper_url || '';
+  const gurunaviUrl = shop.keywords?.gurunavi_url || '';
+  const gbpActionUrl = shop.keywords?.gbp_action_url || '';
 
-  try {
-    const shop = await prisma.shop.findUnique({
-      where: { id: shopId },
-      include: { keywords: true }
-    });
-
-    if (!shop) {
-      return res.status(404).json({ error: '店舗が見つかりませんでした。' });
+  // Choose 3 rotated sub keywords based on dayIndex
+  const selectedSubKeywords: string[] = [];
+  if (subKeywords.length > 0) {
+    for (let i = 0; i < Math.min(3, subKeywords.length); i++) {
+      const wordIndex = (dayIndex * 3 + i) % subKeywords.length;
+      selectedSubKeywords.push(subKeywords[wordIndex]);
     }
+  }
 
-    if (!shop.keywords) {
-      return res.status(400).json({ error: '自動投稿用キーワードが設定されていません。' });
-    }
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  if (!geminiApiKey) {
+    throw new Error('Gemini APIキーが設定されていません。');
+  }
 
-    const mainKeywords: string[] = JSON.parse(shop.keywords.main_keywords || '[]');
-    const subKeywords: string[] = JSON.parse(shop.keywords.sub_keywords || '[]');
-    const fixedFooter = shop.keywords.fixed_footer || '';
-    const customPrompt = shop.keywords.custom_prompt || '';
-    const hpUrl = shop.keywords.hp_url || '';
-    const instagramUsername = shop.keywords.instagram_username || '';
+  const { GoogleGenerativeAI } = require('@google/generative-ai');
+  const genAI = new GoogleGenerativeAI(geminiApiKey);
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    // Choose 3 rotated sub keywords based on dayIndex
-    const index = parseInt(dayIndex || '0', 10);
-    const selectedSubKeywords: string[] = [];
-    if (subKeywords.length > 0) {
-      for (let i = 0; i < Math.min(3, subKeywords.length); i++) {
-        const wordIndex = (index * 3 + i) % subKeywords.length;
-        selectedSubKeywords.push(subKeywords[wordIndex]);
-      }
-    }
+  let portalContext = '';
+  if (tabelogUrl) portalContext += `- 食べログ 店舗ページ: ${tabelogUrl}\n`;
+  if (hotpepperUrl) portalContext += `- ホットペッパー 店舗ページ: ${hotpepperUrl}\n`;
+  if (gurunaviUrl) portalContext += `- ぐるなび 店舗ページ: ${gurunaviUrl}\n`;
 
-    // Call Gemini to generate post text
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-    if (!geminiApiKey) {
-      return res.status(500).json({ error: 'Gemini APIキーが設定されていません。' });
-    }
+  const ctaUrl = gbpActionUrl || hpUrl;
 
-    const { GoogleGenerativeAI } = require('@google/generative-ai');
-    const genAI = new GoogleGenerativeAI(geminiApiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-    let prompt = '';
-    if (instagramPostText && instagramPostText.trim() !== '') {
-      prompt = `
-あなたは店舗「${shop.name}」のオーナー代理です。
-最新のInstagram投稿を取り込み、Googleマイビジネス（MEO）に最適化された魅力的な最新情報投稿（おしらせ）に「自動リライト」してください。
-
-【元のInstagram投稿内容】
-「${instagramPostText}」
-
-【リライトの必須ルール】
-1. メインキーワード（毎回必ず使用）：[ ${mainKeywords.join(', ')} ] の5つを、文章全体の自然な文脈にそって【すべて】必ず含めてください。
-2. 本日の日替わりサブキーワード：[ ${selectedSubKeywords.join(', ')} ] を、文章の中に自然に盛り込んでください。
-3. 店舗のホームページURLは「${hpUrl}」です。興味を持ったお客様を誘導するように、文末や文章内に自然に配置してください。
-4. Instagramユーザー名は「@${instagramUsername}」です。インスタ連動であることを軽く紹介したり、プロフィールへ促す文章を含めてください。
-5. 親近感がありつつ、Googleマップで検索上位（MEO対策）を狙えるように、サービスの特徴や魅力を分かりやすくアピールしてください。
-6. 絵文字は適度に使って、明るく見栄えの良い文章（200文字〜300文字以内）に仕上げてください。
-7. 文末には、以下の「固定フッター署名」を必ず合体させてください。
-
-【固定フッター署名（必ず最後に合体させてください）】
-${fixedFooter}
-
-返される内容はリライトした完成本文のみとし、説明や挨拶、\`\`\`等のMarkdown装飾は一切含めないでください。`;
-    } else {
-      prompt = `
+  const prompt = `
     あなたは店舗「${shop.name}」のオーナー代理です。
-    店舗のMEO自動投稿用テキスト（日替わり最新情報）を新規に1件自動作成してください。
+    店舗のGoogleマップ（MEO）用日替わり投稿テキスト（最新情報/おしらせ）を、指定された曜日インデックス（dayIndex）に基づいて新規に1件自動作成してください。
 
     【店舗情報】
     - 店舗名: ${shop.name}
-    - 店舗ホームページURL: ${hpUrl}
-    - Instagramユーザー名: @${instagramUsername}
-    - 個別プロンプト指示: ${customPrompt || 'なし'}
+    - 公式ホームページURL: ${hpUrl}
+    ${portalContext ? `- 各種ポータルサイトURL:\n${portalContext}` : ''}
+    - 誘導先・ボタン設定先URL: ${ctaUrl}
+    - 個別プロンプト指示（店舗の強み・トーンマナー）: ${customPrompt || '丁寧で自然な日本語で、店舗の魅力をアピールしてください。'}
 
     【作成の必須ルール】
     1. メインキーワード（毎回必ず使用）：[ ${mainKeywords.join(', ')} ] の5つを、文章全体の自然な文脈にそって【すべて】必ず含めてください。
     2. 本日の日替わりサブキーワード：[ ${selectedSubKeywords.join(', ')} ] を、文章の中に自然に盛り込んでください。
-    3. ホームページURL「${hpUrl}」やInstagramアカウント「@${instagramUsername}」に触れ、最新情報や日常の様子を確認してもらうよう自然に誘導してください。
-    4. dayIndex「${index}」に基づき、曜日や日常の切り口（季節感、お客様へのお役立ち、サービス紹介、今日のスタッフの一言など）を変化させ、昨日とは異なるアングルから魅力的な内容にしてください。
+    3. ホームページURL「${hpUrl}」や、各種ポータルサイト等を紹介し、お客様を誘導先URL「${ctaUrl}」へ自然に促す文章を文末や文中に含めてください。
+    4. dayIndex「${dayIndex}」に基づき、今日・明日・明後日の投稿であることが伝わる工夫（「本日も営業中！」「明日のご予約も受付中！」「週末のお出かけに！」など）をし、日替わりの魅力的な内容（サービス紹介、お客様の声紹介、店舗のこだわり、スタッフの一言など）にしてください。
     5. MEO検索対策として非常に有利で、一般客が「行ってみたい」と思える明るく親しみやすい文章（200文字〜300文字以内）に仕上げてください。
     6. 絵文字は適度に使って、見栄え良く構成してください。
     7. 文末には、以下の「固定フッター署名」を必ず合体させてください。
@@ -784,21 +807,112 @@ ${fixedFooter}
     ${fixedFooter}
 
     返される内容は自動作成した完成本文のみとし、説明や挨拶、\`\`\`等のMarkdown装飾は一切含めないでください。`;
+
+  const result = await model.generateContent(prompt);
+  const response = await result.response;
+  const generatedText = response.text().trim().replace(/```/g, '');
+
+  return {
+    text: generatedText,
+    subKeywords: selectedSubKeywords,
+  };
+}
+
+// POST /api/shops/:shopId/draft-posts
+// Save edited drafts back to database
+app.post('/api/shops/:shopId/draft-posts', async (req, res) => {
+  const { shopId } = req.params;
+  const { drafts } = req.body; // Expect array of 3 draft objects
+
+  try {
+    await prisma.shopKeywords.update({
+      where: { shop_id: shopId },
+      data: {
+        draft_posts: JSON.stringify(drafts),
+      }
+    });
+
+    return res.json({ success: true, message: '下書きを保存しました。' });
+  } catch (error: any) {
+    console.error('❌ Draft posts save error:', error);
+    return res.status(500).json({ error: error.message || '下書きの保存に失敗しました。' });
+  }
+});
+
+// POST /api/shops/:shopId/draft-posts/regenerate
+// Regenerate specific day's draft or all three drafts using Gemini AI
+app.post('/api/shops/:shopId/draft-posts/regenerate', async (req, res) => {
+  const { shopId } = req.params;
+  const { dayIndex, all } = req.body; // Expect dayIndex (0,1,2) or all (boolean)
+
+  try {
+    const shop = await prisma.shop.findUnique({
+      where: { id: shopId },
+      include: { keywords: true }
+    });
+
+    if (!shop || !shop.keywords) {
+      return res.status(404).json({ error: '店舗情報、またはキーワード設定が見つかりませんでした。' });
     }
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const generatedText = response.text().trim().replace(/```/g, '');
+    let draftPostsArr = [];
+    if (shop.keywords.draft_posts) {
+      draftPostsArr = JSON.parse(shop.keywords.draft_posts);
+    }
 
-    return res.json({
-      success: true,
-      dayIndex: index,
-      selectedSubKeywords,
-      generatedText,
+    if (all) {
+      // Regenerate all 3 days
+      const day0 = await generateSingleDraft(shop, 0);
+      const day1 = await generateSingleDraft(shop, 1);
+      const day2 = await generateSingleDraft(shop, 2);
+
+      draftPostsArr = [
+        { dayIndex: 0, title: '今日投稿予定の下書き (Day 0)', text: day0.text, subKeywords: day0.subKeywords },
+        { dayIndex: 1, title: '明日投稿予定の下書き (Day 1)', text: day1.text, subKeywords: day1.subKeywords },
+        { dayIndex: 2, title: '明後日投稿予定の下書き (Day 2)', text: day2.text, subKeywords: day2.subKeywords },
+      ];
+    } else {
+      // Regenerate single day's draft
+      const targetIndex = typeof dayIndex === 'number' ? dayIndex : 0;
+      const regenerated = await generateSingleDraft(shop, targetIndex);
+
+      const defaultTitles = [
+        '今日投稿予定の下書き (Day 0)',
+        '明日投稿予定の下書き (Day 1)',
+        '明後日投稿予定の下書き (Day 2)'
+      ];
+
+      // Replace or insert
+      const existingIdx = draftPostsArr.findIndex((d: any) => d.dayIndex === targetIndex);
+      const draftObj = {
+        dayIndex: targetIndex,
+        title: defaultTitles[targetIndex] || `下書き (Day ${targetIndex})`,
+        text: regenerated.text,
+        subKeywords: regenerated.subKeywords,
+      };
+
+      if (existingIdx !== -1) {
+        draftPostsArr[existingIdx] = draftObj;
+      } else {
+        draftPostsArr.push(draftObj);
+      }
+    }
+
+    // Sort to ensure correct order
+    draftPostsArr.sort((a: any, b: any) => a.dayIndex - b.dayIndex);
+
+    // Save to database
+    await prisma.shopKeywords.update({
+      where: { shop_id: shopId },
+      data: {
+        draft_posts: JSON.stringify(draftPostsArr),
+      }
     });
+
+    return res.json({ success: true, drafts: draftPostsArr });
   } catch (error: any) {
-    console.error('❌ Post generation error:', error);
-    return res.status(500).json({ error: error.message || 'AI投稿テキストの自動生成に失敗しました。' });
+    console.error('❌ Draft regenerate error:', error);
+    return res.status(500).json({ error: error.message || 'AI下書きの再生成に失敗しました。' });
   }
 });
 

@@ -35,6 +35,13 @@ interface ShopProfile {
   custom_review_prompt: string | null;
 }
 
+interface DraftPost {
+  dayIndex: number;
+  title: string;
+  text: string;
+  subKeywords: string[];
+}
+
 interface DashboardData {
   shopName: string;
   replyActive: boolean;
@@ -45,6 +52,7 @@ interface DashboardData {
   nextPostTime: string;
   previewImage: string | null;
   googleLocationId: string | null;
+  draftPosts: DraftPost[];
 }
 
 interface DriveImage {
@@ -73,6 +81,7 @@ interface ReviewLog {
 interface SettingsData {
   shopId: string;
   shopName: string;
+  replyActive: boolean;
   customReviewPrompt: string;
   keywords: {
     mainKeywords: string[];
@@ -80,7 +89,10 @@ interface SettingsData {
     fixedFooter: string;
     customPrompt: string;
     hpUrl: string;
-    instagramUsername: string;
+    tabelogUrl: string;
+    hotpepperUrl: string;
+    gurunaviUrl: string;
+    gbpActionUrl: string;
   };
   templates: {
     star3: string[];
@@ -115,12 +127,12 @@ export default function App() {
   const [messageBanner, setMessageBanner] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // MEO Post simulation states
-  const [dayIndex, setDayIndex] = useState<number>(0);
-  const [instagramInput, setInstagramInput] = useState<string>('');
-  const [generatedPostText, setGeneratedPostText] = useState<string | null>(null);
-  const [generatedSubKeywords, setGeneratedSubKeywords] = useState<string[]>([]);
-  const [isGeneratingPost, setIsGeneratingPost] = useState<boolean>(false);
+  // 3-Day Draft states
+  const [editingDraftText, setEditingDraftText] = useState<{ [dayIndex: number]: string }>({});
+  const [isEditingDraft, setIsEditingDraft] = useState<{ [dayIndex: number]: boolean }>({});
+  const [isSavingDrafts, setIsSavingDrafts] = useState<{ [dayIndex: number]: boolean }>({});
+  const [isRegeneratingDraft, setIsRegeneratingDraft] = useState<{ [dayIndex: number]: boolean }>({});
+  const [isRegeneratingAll, setIsRegeneratingAll] = useState<boolean>(false);
 
   // Auto-login or initial session verification on reload
   useEffect(() => {
@@ -317,7 +329,7 @@ export default function App() {
       });
 
       if (res.ok) {
-        showBanner('success', '設定をSQLiteデータベースに正常に保存しました！');
+        showBanner('success', '設定をデータベースに正常に保存しました！');
       } else {
         showBanner('error', '設定の保存に失敗しました。');
       }
@@ -466,36 +478,96 @@ export default function App() {
     }
   };
 
-  // Generate / Simulate MEO post via Gemini API
-  const handleGeneratePost = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!currentShop) return;
-
-    setIsGeneratingPost(true);
-    setGeneratedPostText(null);
+  // Save single draft post back to database
+  const handleSaveDraft = async (dayIndex: number) => {
+    if (!currentShop || !dashboard) return;
+    
+    setIsSavingDrafts(prev => ({ ...prev, [dayIndex]: true }));
+    
+    // Update draft array with our edited text
+    const updatedDrafts = dashboard.draftPosts.map((d) => {
+      if (d.dayIndex === dayIndex) {
+        return {
+          ...d,
+          text: editingDraftText[dayIndex] !== undefined ? editingDraftText[dayIndex] : d.text
+        };
+      }
+      return d;
+    });
 
     try {
-      const res = await fetch(`${API_BASE}/shops/${currentShop.id}/generate-post`, {
+      const res = await fetch(`${API_BASE}/shops/${currentShop.id}/draft-posts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          dayIndex,
-          instagramPostText: instagramInput,
-        }),
+        body: JSON.stringify({ drafts: updatedDrafts }),
+      });
+
+      if (res.ok) {
+        setDashboard({
+          ...dashboard,
+          draftPosts: updatedDrafts
+        });
+        setIsEditingDraft(prev => ({ ...prev, [dayIndex]: false }));
+        showBanner('success', `✨ Day ${dayIndex} の下書きを保存しました。`);
+      } else {
+        showBanner('error', '下書きの保存に失敗しました。');
+      }
+    } catch (err) {
+      showBanner('error', '通信エラー：下書きを保存できませんでした。');
+    } finally {
+      setIsSavingDrafts(prev => ({ ...prev, [dayIndex]: false }));
+    }
+  };
+
+  // Regenerate single or all draft posts via Gemini API
+  const handleRegenerateDraft = async (dayIndex: number, all: boolean = false) => {
+    if (!currentShop || !dashboard) return;
+
+    if (all) {
+      setIsRegeneratingAll(true);
+    } else {
+      setIsRegeneratingDraft(prev => ({ ...prev, [dayIndex]: true }));
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/shops/${currentShop.id}/draft-posts/regenerate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dayIndex, all }),
       });
 
       const data = await res.json();
-      if (res.ok) {
-        setGeneratedPostText(data.generatedText);
-        setGeneratedSubKeywords(data.selectedSubKeywords || []);
-        showBanner('success', instagramInput ? '✨ Instagram最新投稿をMEO用に自動リライトしました！' : '✨ 本日のMEO自動投稿テキストを自動生成しました！');
+      if (res.ok && data.drafts) {
+        setDashboard({
+          ...dashboard,
+          draftPosts: data.drafts
+        });
+        
+        // Clear editing states for regenerated items
+        if (all) {
+          setEditingDraftText({});
+          setIsEditingDraft({});
+          showBanner('success', '✨ 3日先までのすべての下書きをAIで再生成しました！');
+        } else {
+          setEditingDraftText(prev => {
+            const next = { ...prev };
+            delete next[dayIndex];
+            return next;
+          });
+          setIsEditingDraft(prev => ({ ...prev, [dayIndex]: false }));
+          showBanner('success', `✨ Day ${dayIndex} の下書きをAIで再生成しました！`);
+        }
       } else {
-        showBanner('error', data.error || '投稿文の生成に失敗しました。');
+        showBanner('error', data.error || 'AI下書きの再生成に失敗しました。');
       }
     } catch (err) {
-      showBanner('error', '通信エラー：AI投稿文を生成できませんでした。');
+      showBanner('error', '通信エラー：AI下書きを再生成できませんでした。');
     } finally {
-      setIsGeneratingPost(false);
+      if (all) {
+        setIsRegeneratingAll(false);
+      } else {
+        setIsRegeneratingDraft(prev => ({ ...prev, [dayIndex]: false }));
+      }
     }
   };
 
@@ -825,121 +897,157 @@ export default function App() {
                   </div>
                 )}
 
-                {/* 🤖 MEO SEIHA - AI Daily Post generator & Instagram sync 리라이ター */}
-                <div className="border-t border-slate-100 pt-4 space-y-3">
+                {/* 📅 MEO SEIHA - 3-Day Editable Scheduled Drafts Panel */}
+                <div className="border-t border-slate-100 pt-4 space-y-3.5">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-black text-slate-800 tracking-wider flex items-center gap-1.5 uppercase">
                       <Sparkles className="w-4 h-4 text-indigo-500" />
-                      🤖 AI自動投稿・日替わりシミュレーション
+                      📅 3日先までのAI自動投稿・予約下書き
                     </span>
-                  </div>
-
-                  <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-4 space-y-4">
-                    {/* Day Selector Tabs */}
-                    <div className="space-y-2">
-                      <label className="block text-[10px] font-black text-slate-400 tracking-wider uppercase">
-                        1. 投稿日のシミュレーション選択
-                      </label>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {['今日 (Day 0)', '明日 (Day 1)', '明後日 (Day 2)'].map((label, idx) => (
-                          <button
-                            key={`day-${idx}`}
-                            type="button"
-                            onClick={() => {
-                              setDayIndex(idx);
-                              setGeneratedPostText(null);
-                            }}
-                            className={`py-1.5 px-2 px-1 rounded-lg font-black text-[10px] transition-all border ${
-                              dayIndex === idx
-                                ? 'bg-indigo-600 border-indigo-700 text-white shadow-sm'
-                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                            }`}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Instagram/Blog text input simulation for MEO Sync */}
-                    <div className="space-y-2 pt-1 border-t border-slate-200/50">
-                      <div className="flex items-center justify-between">
-                        <label className="block text-[10px] font-black text-slate-400 tracking-wider uppercase">
-                          2. 最新のインスタ・ブログ投稿文 (任意)
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setInstagramInput(
-                              '【店舗集客でお悩みのオーナー様へ】Googleマップでの表示順位を高めるMEO対策や、競合に負けないローカルSEO集客について最新のノウハウを公開中！実績多数の合同会社THANX CREATEが、初期設定から口コミ獲得の仕組み化まで一気通貫で徹底サポートいたします。ぜひWebサイトまたはお電話からお気軽にお問い合わせください！📈'
-                            );
-                            setGeneratedPostText(null);
-                          }}
-                          className="text-[9px] font-extrabold text-indigo-600 hover:text-indigo-800 underline transition-colors"
-                        >
-                          サンプル挿入 📝
-                        </button>
-                      </div>
-                      <textarea
-                        className="block w-full border border-slate-200 rounded-lg p-2.5 text-[11px] font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brandBlue-500 leading-normal"
-                        placeholder="インスタやブログの普段の投稿文をここに貼り付けると、自動同期＆MEO用に最強リライトするシミュレーションが行えます！"
-                        rows={3}
-                        value={instagramInput}
-                        onChange={(e) => {
-                          setInstagramInput(e.target.value);
-                          setGeneratedPostText(null);
-                        }}
-                      />
-                    </div>
-
-                    {/* Generate Action Button */}
                     <button
                       type="button"
-                      onClick={() => handleGeneratePost()}
-                      disabled={isGeneratingPost}
-                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[11px] py-2.5 px-3 rounded-lg shadow transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
+                      disabled={isRegeneratingAll}
+                      onClick={() => handleRegenerateDraft(0, true)}
+                      className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-black py-1.5 px-3 rounded-full transition-all flex items-center gap-1 border border-indigo-100 disabled:opacity-50"
                     >
-                      {isGeneratingPost ? (
+                      {isRegeneratingAll ? (
                         <>
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          MEO投稿文をAI自動作成中...
+                          <RefreshCw className="w-3 h-3 animate-spin" />
+                          一括作成中...
                         </>
                       ) : (
                         <>
-                          <Sparkles className="w-3.5 h-3.5" />
-                          {instagramInput ? 'インスタから同期 ➔ MEO自動最適化！' : '日替わりのMEO投稿文をプレビュー生成！'}
+                          <Sparkles className="w-3 h-3" />
+                          3日分を一括作成 🪄
                         </>
                       )}
                     </button>
+                  </div>
 
-                    {/* Result Preview Box */}
-                    {generatedPostText && (
-                      <div className="bg-indigo-950/5 border border-indigo-200 rounded-xl p-3 shadow-inner space-y-2.5">
-                        <div className="flex items-center justify-between border-b border-indigo-100/60 pb-1.5">
-                          <span className="text-[10px] font-black text-indigo-700 flex items-center gap-1 uppercase tracking-wider">
-                            ✨ Googleマップ（GBP）投稿 プレビュー
-                          </span>
-                          <span className="text-[8px] font-black bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded uppercase">
-                            AI自動作成
-                          </span>
-                        </div>
+                  <div className="space-y-4">
+                    {dashboard.draftPosts && dashboard.draftPosts.length > 0 ? (
+                      dashboard.draftPosts.map((d) => {
+                        const isEditing = !!isEditingDraft[d.dayIndex];
+                        const isSaving = !!isSavingDrafts[d.dayIndex];
+                        const isRegenerating = !!isRegeneratingDraft[d.dayIndex];
+                        const currentText = editingDraftText[d.dayIndex] !== undefined ? editingDraftText[d.dayIndex] : d.text;
 
-                        {/* Keyword tagging display */}
-                        {generatedSubKeywords.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            <span className="text-[8px] font-black text-brandBlue-600 bg-brandBlue-50 border border-brandBlue-100 px-1.5 py-0.5 rounded">
-                              📌 メイン 5キーワード含
-                            </span>
-                            {generatedSubKeywords.map((tag, tIdx) => (
-                              <span key={tIdx} className="text-[8px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded">
-                                🔄 サブローテーション: {tag}
-                              </span>
-                            ))}
+                        return (
+                          <div key={d.dayIndex} className="bg-white border border-slate-200/80 rounded-xl p-4 shadow-sm space-y-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                                  d.dayIndex === 0
+                                    ? 'bg-rose-50 text-rose-700 border border-rose-100'
+                                    : d.dayIndex === 1
+                                    ? 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                                    : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                }`}>
+                                  {d.dayIndex === 0 ? '本日投稿予定' : d.dayIndex === 1 ? '明日投稿予定' : '明後日投稿予定'}
+                                </span>
+                                <h4 className="text-xs font-black text-slate-800 mt-1.5">{d.title}</h4>
+                              </div>
+                              
+                              {d.subKeywords && d.subKeywords.length > 0 && (
+                                <div className="text-right">
+                                  <span className="text-[8px] font-black text-indigo-500 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded">
+                                    🔄 サブKW: {d.subKeywords.join(', ')}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="bg-slate-50/50 border border-slate-100 rounded-xl p-3">
+                              {isEditing ? (
+                                <textarea
+                                  className="block w-full border border-slate-200 rounded-lg p-2.5 text-[11px] font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-brandBlue-500 leading-normal min-h-[120px]"
+                                  value={currentText}
+                                  onChange={(e) => {
+                                    setEditingDraftText({
+                                      ...editingDraftText,
+                                      [d.dayIndex]: e.target.value
+                                    });
+                                  }}
+                                />
+                              ) : (
+                                <p className="text-[11px] font-bold text-slate-700 whitespace-pre-wrap leading-relaxed">
+                                  {d.text}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-slate-100">
+                              {isEditing ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setIsEditingDraft(prev => ({ ...prev, [d.dayIndex]: false }));
+                                      setEditingDraftText(prev => {
+                                        const next = { ...prev };
+                                        delete next[d.dayIndex];
+                                        return next;
+                                      });
+                                    }}
+                                    className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold py-1.5 px-3 rounded-lg transition-all"
+                                  >
+                                    キャンセル
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={isSaving}
+                                    onClick={() => handleSaveDraft(d.dayIndex)}
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black py-1.5 px-3.5 rounded-lg transition-all flex items-center gap-1"
+                                  >
+                                    {isSaving ? (
+                                      <RefreshCw className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                      '下書きを保存'
+                                    )}
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    disabled={isRegenerating}
+                                    onClick={() => handleRegenerateDraft(d.dayIndex, false)}
+                                    className="bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 text-slate-700 text-[10px] font-bold py-1.5 px-3 rounded-lg transition-all flex items-center gap-1"
+                                  >
+                                    {isRegenerating ? (
+                                      <RefreshCw className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                      <>
+                                        <Sparkles className="w-3 h-3 text-indigo-500" />
+                                        AI再生成
+                                      </>
+                                    )}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingDraftText({
+                                        ...editingDraftText,
+                                        [d.dayIndex]: d.text
+                                      });
+                                      setIsEditingDraft(prev => ({ ...prev, [d.dayIndex]: true }));
+                                    }}
+                                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold py-1.5 px-3.5 rounded-lg transition-all"
+                                  >
+                                    手動編集
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </div>
-                        )}
-
-                        <p className="text-[11px] font-bold text-slate-800 whitespace-pre-wrap leading-relaxed">
-                          {generatedPostText}
+                        );
+                      })
+                    ) : (
+                      <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-5 text-center space-y-1.5">
+                        <AlertTriangle className="w-5 h-5 text-indigo-500 mx-auto" />
+                        <p className="text-xs font-extrabold text-slate-800">下書きがありません</p>
+                        <p className="text-[10px] text-slate-500 font-bold max-w-[240px] mx-auto leading-relaxed">
+                          [3日分を一括作成] をタップして、Gemini AIで予約下書きを新規作成してください。
                         </p>
                       </div>
                     )}
@@ -1090,6 +1198,45 @@ export default function App() {
         {activeTab === 'settings' && settings && (
           <form onSubmit={handleSaveSettings} className="space-y-4">
 
+            {/* CARD: Toggle Switch Card for Auto-reply inside Settings */}
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <span className="text-xs font-black text-slate-800 tracking-wider flex items-center gap-1.5 uppercase">
+                  <span className={`w-2.5 h-2.5 rounded-full ${settings.replyActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
+                  自動返信ステータス (星3〜★5のみ対象)
+                </span>
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                  settings.replyActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {settings.replyActive ? '作動中' : '停止中'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between py-1">
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900">口コミ自動返信機能</h3>
+                  <p className="text-[10px] text-slate-400 font-bold leading-relaxed mt-0.5">
+                    ONの場合、星3〜5の高評価に対して、1時間後に登録済みの定型文からランダムに自動送信します。
+                  </p>
+                </div>
+
+                {/* Smooth Animated Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setSettings({ ...settings, replyActive: !settings.replyActive })}
+                  className={`relative inline-flex h-7.5 w-13.5 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    settings.replyActive ? 'bg-emerald-500' : 'bg-slate-300'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-6.5 w-6.5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      settings.replyActive ? 'translate-x-6' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
             {/* Auto post settings */}
             <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
               <h2 className="text-base font-black text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
@@ -1193,7 +1340,7 @@ export default function App() {
                 />
               </div>
 
-              {/* HP URL and Instagram Username Settings */}
+              {/* HP URL and GBP Action Button settings */}
               <div className="grid grid-cols-2 gap-3.5 border-t border-slate-50 pt-3">
                 <div className="space-y-1.5">
                   <label className="block text-[11px] font-black text-slate-400 tracking-wider uppercase">
@@ -1216,21 +1363,75 @@ export default function App() {
 
                 <div className="space-y-1.5">
                   <label className="block text-[11px] font-black text-slate-400 tracking-wider uppercase">
-                    Instagramユーザー名
+                    GBP投稿「詳細」ボタンURL
                   </label>
                   <p className="text-[9px] text-slate-400 leading-normal font-bold">
-                    インスタ最新投稿のリライト用に連携します。
+                    投稿ボタンに設定する、LPやキャンペーンのURLです。
                   </p>
                   <input
-                    type="text"
+                    type="url"
                     className="block w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brandBlue-500"
-                    placeholder="thanx_create"
-                    value={settings.keywords.instagramUsername || ''}
+                    placeholder="https://thanx-create.com/lp-meo"
+                    value={settings.keywords.gbpActionUrl || ''}
                     onChange={(e) => setSettings({
                       ...settings,
-                      keywords: { ...settings.keywords, instagramUsername: e.target.value }
+                      keywords: { ...settings.keywords, gbpActionUrl: e.target.value }
                     })}
                   />
+                </div>
+              </div>
+
+              {/* 3 Major Portals Settings */}
+              <div className="border-t border-slate-50 pt-4 space-y-3">
+                <label className="block text-[11px] font-black text-slate-400 tracking-wider uppercase">
+                  3大ポータルサイト連携 URL (任意)
+                </label>
+                <p className="text-[9px] text-slate-400 leading-normal font-bold">
+                  ポータルの最新の口コミや掲載メニューをAIに学習させます。
+                </p>
+                
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <span className="block text-[10px] font-bold text-slate-500">食べログ 店舗URL</span>
+                    <input
+                      type="url"
+                      className="block w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brandBlue-500"
+                      placeholder="https://tabelog.com/aichi/..."
+                      value={settings.keywords.tabelogUrl || ''}
+                      onChange={(e) => setSettings({
+                        ...settings,
+                        keywords: { ...settings.keywords, tabelogUrl: e.target.value }
+                      })}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="block text-[10px] font-bold text-slate-500">ホットペッパービューティー/グルメ 店舗URL</span>
+                    <input
+                      type="url"
+                      className="block w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brandBlue-500"
+                      placeholder="https://beauty.hotpepper.jp/slnH..."
+                      value={settings.keywords.hotpepperUrl || ''}
+                      onChange={(e) => setSettings({
+                        ...settings,
+                        keywords: { ...settings.keywords, hotpepperUrl: e.target.value }
+                      })}
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="block text-[10px] font-bold text-slate-500">ぐるなび 店舗URL</span>
+                    <input
+                      type="url"
+                      className="block w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brandBlue-500"
+                      placeholder="https://r.gnavi.co.jp/..."
+                      value={settings.keywords.gurunaviUrl || ''}
+                      onChange={(e) => setSettings({
+                        ...settings,
+                        keywords: { ...settings.keywords, gurunaviUrl: e.target.value }
+                      })}
+                    />
+                  </div>
                 </div>
               </div>
             </div>

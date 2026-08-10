@@ -56,7 +56,11 @@ async function main() {
       fixed_footer: '店舗名: 合同会社THANX CREATE\n住所: 名古屋市中区栄1丁目23-29',
       custom_prompt: '丁寧で自然なトーンで、MEO集客サポートの魅力を訴求してください。',
       hp_url: 'https://thanx-create.com',
-      instagram_username: 'thanx_create',
+      tabelog_url: 'https://tabelog.com/aichi/A2301/A230103/23080000/',
+      hotpepper_url: 'https://www.hotpepper.jp/strJ000000000/',
+      gurunavi_url: 'https://r.gnavi.co.jp/g000000/',
+      gbp_action_url: 'https://thanx-create.com/lp-meo',
+      draft_posts: null,
     },
   });
 

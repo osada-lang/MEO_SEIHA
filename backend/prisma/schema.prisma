@@ -37,7 +37,11 @@ model ShopKeywords {
   fixed_footer       String?
   custom_prompt      String?
   hp_url             String?
-  instagram_username String?
+  tabelog_url        String?
+  hotpepper_url      String?
+  gurunavi_url       String?
+  gbp_action_url     String?
+  draft_posts        String?  // JSON-serialized string of 3 draft posts array
   updated_at         DateTime @updatedAt
 
   shop          Shop     @relation(fields: [shop_id], references: [id], onDelete: Cascade)
