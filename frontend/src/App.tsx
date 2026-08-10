@@ -19,9 +19,12 @@ import {
   BarChart3
 } from 'lucide-react';
 
-const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? 'http://localhost:3000/api'
-  : 'https://meo-seiha.onrender.com/api';
+const metaEnv = (import.meta as any).env;
+const API_BASE = metaEnv && metaEnv.VITE_API_BASE_URL
+  ? (metaEnv.VITE_API_BASE_URL.endsWith('/api') ? metaEnv.VITE_API_BASE_URL : `${metaEnv.VITE_API_BASE_URL}/api`)
+  : (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:3000/api'
+    : '/api');
 
 interface ShopProfile {
   id: string;
