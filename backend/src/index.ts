@@ -750,21 +750,15 @@ app.post('/api/shops/:shopId/test-line-alert', async (req, res) => {
 async function generateSingleDraft(shop: any, dayIndex: number): Promise<{ text: string, subKeywords: string[] }> {
   const mainKeywords: string[] = JSON.parse(shop.keywords?.main_keywords || '[]');
   const subKeywords: string[] = JSON.parse(shop.keywords?.sub_keywords || '[]');
-  const fixedFooter = shop.keywords?.fixed_footer || '';
   const customPrompt = shop.keywords?.custom_prompt || '';
   const hpUrl = shop.keywords?.hp_url || '';
-  const tabelogUrl = shop.keywords?.tabelog_url || '';
-  const hotpepperUrl = shop.keywords?.hotpepper_url || '';
-  const gurunaviUrl = shop.keywords?.gurunavi_url || '';
-  const gbpActionUrl = shop.keywords?.gbp_action_url || '';
 
-  // Choose 3 rotated sub keywords based on dayIndex
+  // Choose 2 to 3 randomized sub-keywords from the pool to balance frequency and ensure randomness
   const selectedSubKeywords: string[] = [];
   if (subKeywords.length > 0) {
-    for (let i = 0; i < Math.min(3, subKeywords.length); i++) {
-      const wordIndex = (dayIndex * 3 + i) % subKeywords.length;
-      selectedSubKeywords.push(subKeywords[wordIndex]);
-    }
+    const shuffled = [...subKeywords].sort(() => 0.5 - Math.random());
+    const count = Math.floor(Math.random() * 2) + 2; // Randomly choose 2 or 3
+    selectedSubKeywords.push(...shuffled.slice(0, Math.min(count, shuffled.length)));
   }
 
   const geminiApiKey = process.env.GEMINI_API_KEY;
@@ -776,37 +770,41 @@ async function generateSingleDraft(shop: any, dayIndex: number): Promise<{ text:
   const genAI = new GoogleGenerativeAI(geminiApiKey);
   const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-  let portalContext = '';
-  if (tabelogUrl) portalContext += `- 食べログ 店舗ページ: ${tabelogUrl}\n`;
-  if (hotpepperUrl) portalContext += `- ホットペッパー 店舗ページ: ${hotpepperUrl}\n`;
-  if (gurunaviUrl) portalContext += `- ぐるなび 店舗ページ: ${gurunaviUrl}\n`;
-
-  const ctaUrl = gbpActionUrl || hpUrl;
+  // Get current date context in Japanese to naturally incorporate seasonal topics
+  const todayJp = new Date().toLocaleDateString('ja-JP', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long'
+  });
 
   const prompt = `
-    あなたは店舗「${shop.name}」のオーナー代理です。
-    店舗のGoogleマップ（MEO）用日替わり投稿テキスト（最新情報/おしらせ）を、指定された曜日インデックス（dayIndex）に基づいて新規に1件自動作成してください。
+    あなたは店舗「${shop.name}」のオーナー代理として、Googleマップ（MEO）用の日替わり投稿テキスト（おしらせ/最新情報）を自動作成してください。
 
     【店舗情報】
     - 店舗名: ${shop.name}
-    - 公式ホームページURL: ${hpUrl}
-    ${portalContext ? `- 各種ポータルサイトURL:\n${portalContext}` : ''}
-    - 誘導先・ボタン設定先URL: ${ctaUrl}
-    - 個別プロンプト指示（店舗の強み・トーンマナー）: ${customPrompt || '丁寧で自然な日本語で、店舗の魅力をアピールしてください。'}
+    - ターゲット層へのアピール・トーンマナー: ${customPrompt || '親しみやすく誠実なトーン。'}
+    - 今日の日付: ${todayJp}
 
-    【作成の必須ルール】
-    1. メインキーワード（毎回必ず使用）：[ ${mainKeywords.join(', ')} ] の5つを、文章全体の自然な文脈にそって【すべて】必ず含めてください。
-    2. 本日の日替わりサブキーワード：[ ${selectedSubKeywords.join(', ')} ] を、文章の中に自然に盛り込んでください。
-    3. ホームページURL「${hpUrl}」や、各種ポータルサイト等を紹介し、お客様を誘導先URL「${ctaUrl}」へ自然に促す文章を文末や文中に含めてください。
-    4. dayIndex「${dayIndex}」に基づき、今日・明日・明後日の投稿であることが伝わる工夫（「本日も営業中！」「明日のご予約も受付中！」「週末のお出かけに！」など）をし、日替わりの魅力的な内容（サービス紹介、お客様の声紹介、店舗のこだわり、スタッフの一言など）にしてください。
-    5. MEO検索対策として非常に有利で、一般客が「行ってみたい」と思える明るく親しみやすい文章（200文字〜300文字以内）に仕上げてください。
-    6. 絵文字は適度に使って、見栄え良く構成してください。
-    7. 文末には、以下の「固定フッター署名」を必ず合体させてください。
+    【作成の絶対ルール（厳守してください）】
+    1. 毎回異なる構成・書き出し:
+       直近の投稿や前後の下書きと、内容・書き出し（例：「こんにちは」「実は〜」など）・全体の構成が重複しないようにしてください。毎回バリエーション豊かでユニークな構成にしてください。
+    2. メインキーワードの完全含有:
+       指定されたメインキーワード [ ${mainKeywords.join(', ')} ] を、文章全体の自然な文脈にそって【すべて必ず】本文中に含めてください。単なるキーワードの羅列や強引な詰め込みは厳禁です。
+    3. 本日のサブキーワード:
+       本日の日替わりサブキーワード [ ${selectedSubKeywords.join(', ')} ] を、文章の中に自然に盛り込んでください。
+    4. 宣伝的な「事実文」を必ず1文挿入:
+       「誰が、どこで、何を提供しているか」を示す客観的・具体的な宣伝的事実文を、必ず本文の中に1文だけ織り込んでください。この事実文の言い回しやアプローチは毎回変えてください。
+    5. 文字数と文章の質:
+       本文は【150文字〜250文字程度】に収め、一般客が読んで「行ってみたい」「相談してみたい」と思える、親しみやすく自然な日本語で仕上げてください。
+    6. 連絡先や署名情報の完全排除:
+       本文の中には、ホームページURL、電話番号、アクションボタンの文言（「詳細はこちら」「今すぐ予約」など）、住所、会社名や店舗名のフッター署名などは【絶対に】含めないでください。（これらはシステム側でボタンとして登録されるため、テキスト内に記載すると重複して見苦しくなります）
+    7. 記号・装飾の完全排除:
+       絵文字、マークダウン（**、#、*など）、見出し、箇条書き、目立つ記号（■、★、◆、▲、【】など）は【一切】使わないでください。純粋な文章テキストのみで出力してください。
+    8. 季節・時期の話題の自然な織り込み:
+       今日の日付（${todayJp}）を踏まえ、現在の季節や時期に合う話題（夏、お盆、暑さ対策など）を自然に入れられる場合は織り込んでください（無理に詰め込む必要はありません）。
 
-    【固定フッター署名（必ず最後に合体させてください）】
-    ${fixedFooter}
-
-    返される内容は自動作成した完成本文のみとし、説明や挨拶、\`\`\`等のMarkdown装飾は一切含めないでください。`;
+    返される内容は自動作成した完成本文のみとし、説明、挨拶、マークダウン装飾（\`\`\`など）は一切含めないでください。`;
 
   const result = await model.generateContent(prompt);
   const response = await result.response;
