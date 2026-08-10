@@ -318,6 +318,33 @@ export default function App() {
     }
   };
 
+  // Simulate daily posting and rollover slide
+  const handleSimulateRollover = async () => {
+    if (!currentShop || !dashboard || isToggling) return;
+    setIsToggling(true);
+
+    try {
+      const res = await fetch(`${API_BASE}/shops/${currentShop.id}/batch/run-daily-post`, {
+        method: 'POST',
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setDashboard({
+          ...dashboard,
+          draftPosts: data.newDrafts,
+        });
+        showBanner('success', `【成功】${data.publishedPost.simulated ? '（疑似）' : '（本物）'}自動投稿＆下書きを1日スライドしました！`);
+      } else {
+        showBanner('error', data.error || 'スライドテストに失敗しました。');
+      }
+    } catch (err) {
+      showBanner('error', 'サーバーとの通信に失敗しました。');
+    } finally {
+      setIsToggling(false);
+    }
+  };
+
   // Save Settings forms (Keywords, templates, prompts)
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1055,6 +1082,37 @@ export default function App() {
                       </div>
                     )}
                   </div>
+
+                  {/* 🚨 TEST BUTTON FOR ROLL-OVER */}
+                  {dashboard.draftPosts && dashboard.draftPosts.length > 0 && (
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 space-y-2 mt-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                          <h4 className="text-xs font-black text-slate-800">【開発デモ検証】毎日自動投稿シミュレーター</h4>
+                        </div>
+                        <span className="text-[8px] font-black bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">DEV ONLY</span>
+                      </div>
+                      <p className="text-[9px] text-slate-500 font-bold leading-normal">
+                        このボタンを押すと、「本日（Day 0）」の下書きがGoogleマップへ実際に送信されます（接続前は疑似送信）。その後、下書きが1日分スライドし、新しく空いた明後日分（Day 2）にGemini AIが自動投稿文を新規生成します。
+                      </p>
+                      <button
+                        type="button"
+                        disabled={isToggling}
+                        onClick={handleSimulateRollover}
+                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[10px] py-2 px-3 rounded-lg shadow transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
+                      >
+                        {isToggling ? (
+                          <RefreshCw className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <>
+                            <Sparkles className="w-3 h-3" />
+                            本日分を自動投稿して下書きをスライド（ロールオーバー）する 🚀
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -916,6 +916,128 @@ app.post('/api/shops/:shopId/draft-posts/regenerate', async (req, res) => {
   }
 });
 
+// POST /api/shops/:shopId/batch/run-daily-post
+// Simulates or runs the daily batch rollover:
+// 1. Publishes Day 0 draft (mocked/simulated or real GBP if connected)
+// 2. Slides drafts: Day 1 -> Day 0, Day 2 -> Day 1
+// 3. Generates a new Day 2 draft using Gemini AI
+app.post('/api/shops/:shopId/batch/run-daily-post', async (req, res) => {
+  const { shopId } = req.params;
+
+  try {
+    const shop = await prisma.shop.findUnique({
+      where: { id: shopId },
+      include: { keywords: true },
+    });
+
+    if (!shop) {
+      return res.status(404).json({ error: '店舗が見つかりませんでした。' });
+    }
+
+    let draftPostsArr = [];
+    if (shop.keywords && shop.keywords.draft_posts) {
+      try {
+        draftPostsArr = JSON.parse(shop.keywords.draft_posts);
+      } catch (err) {
+        console.error('❌ Failed to parse drafts:', err);
+      }
+    }
+
+    if (draftPostsArr.length === 0) {
+      return res.status(400).json({ error: '下書きが存在しないため、自動生成処理を実行できません。先にダッシュボードで初期下書きを作成してください。' });
+    }
+
+    // 1. The post being published today (Day 0)
+    const publishedPost = draftPostsArr[0];
+
+    // Simulate/Perform actual posting to Google Business Profile API if location is set and token is set
+    let gbpPublished = false;
+    let gbpResponse = null;
+
+    const clientID = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+    const locationId = shop.google_location_id || (shop.keywords && shop.keywords.gbp_action_url);
+
+    if (clientID && clientSecret && refreshToken && locationId && locationId.startsWith('accounts/')) {
+      console.log(`📡 Attempting real GBP post creation for location: ${locationId}`);
+      try {
+        const oauth2Client = new google.auth.OAuth2(clientID, clientSecret, 'http://localhost');
+        oauth2Client.setCredentials({ refresh_token: refreshToken });
+        
+        // Post to GMB v4 LocalPosts API
+        const response = await oauth2Client.request({
+          url: `https://mybusiness.googleapis.com/v4/${locationId}/localPosts`,
+          method: 'POST',
+          data: {
+            languageCode: 'ja-JP',
+            summary: publishedPost.text,
+            topicType: 'STANDARD',
+          }
+        });
+
+        gbpPublished = true;
+        gbpResponse = response.data;
+        console.log('✅ Successfully published real post to Google Business Profile!');
+      } catch (gbpError: any) {
+        console.error('⚠️ Real GBP publishing failed (expected in test sandbox):', gbpError.message || gbpError);
+      }
+    }
+
+    // 2. Perform the roll-over (Slide)
+    // Day 1 becomes Day 0
+    const nextDay0 = {
+      dayIndex: 0,
+      title: '今日投稿予定の下書き (Day 0)',
+      text: draftPostsArr[1].text,
+      subKeywords: draftPostsArr[1].subKeywords,
+    };
+
+    // Day 2 becomes Day 1
+    const nextDay1 = {
+      dayIndex: 1,
+      title: '明日投稿予定の下書き (Day 1)',
+      text: draftPostsArr[2].text,
+      subKeywords: draftPostsArr[2].subKeywords,
+    };
+
+    // 3. Generate a brand new Day 2 draft using Gemini AI!
+    const newDay2Raw = await generateSingleDraft(shop, 2);
+    const nextDay2 = {
+      dayIndex: 2,
+      title: '明後日投稿予定の下書き (Day 2)',
+      text: newDay2Raw.text,
+      subKeywords: newDay2Raw.subKeywords,
+    };
+
+    const newDrafts = [nextDay0, nextDay1, nextDay2];
+
+    // Save back to database
+    await prisma.shopKeywords.update({
+      where: { shop_id: shopId },
+      data: {
+        draft_posts: JSON.stringify(newDrafts)
+      }
+    });
+
+    return res.json({
+      success: true,
+      message: '自動投稿およびスライド生成処理が正常に完了しました！',
+      publishedPost: {
+        text: publishedPost.text,
+        subKeywords: publishedPost.subKeywords,
+        simulated: !gbpPublished,
+        gbpResponse,
+      },
+      newDrafts,
+    });
+
+  } catch (error: any) {
+    console.error('❌ Daily post rollover error:', error);
+    return res.status(500).json({ error: error.message || '自動生成バッチ処理の実行に失敗しました。' });
+  }
+});
+
 // Start express server
 app.listen(port, () => {
   console.log(`\n================================================================================`);
