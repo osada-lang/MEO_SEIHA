@@ -979,10 +979,17 @@ export default function App() {
                               </div>
                               
                               {d.subKeywords && d.subKeywords.length > 0 && (
-                                <div className="text-right">
-                                  <span className="text-[8px] font-black text-indigo-500 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded">
-                                    🔄 サブKW: {d.subKeywords.join(', ')}
+                                <div className="text-right shrink-0 bg-indigo-50/50 border border-indigo-100/80 rounded-xl p-2 min-w-[90px] max-w-[120px]">
+                                  <span className="text-[8px] font-black text-indigo-500 block border-b border-indigo-100/80 pb-0.5 mb-1 tracking-wider text-center">
+                                    🔄 サブKW
                                   </span>
+                                  <ul className="text-[8px] font-black text-indigo-600 space-y-0.5 text-left list-none leading-tight">
+                                    {d.subKeywords.map((word, sIdx) => (
+                                      <li key={sIdx} className="truncate" title={word}>
+                                        ・{word}
+                                      </li>
+                                    ))}
+                                  </ul>
                                 </div>
                               )}
                             </div>
