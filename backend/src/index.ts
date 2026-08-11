@@ -259,7 +259,7 @@ app.get('/api/shops/:shopId/dashboard', async (req, res) => {
       postingMode,
       postingModeLabel,
       pendingReviewsCount,
-      nextPostTime: '本日 12:00 予定',
+      nextPostTime: `本日 ${shop.keywords?.post_time_hour ?? 12}:00 予定`,
       previewImage,
       googleLocationId: shop.google_location_id,
       draftPosts: draftPostsArr,
@@ -327,6 +327,7 @@ app.get('/api/shops/:shopId/settings', async (req, res) => {
         hotpepperUrl: shop.keywords?.hotpepper_url || '',
         gurunaviUrl: shop.keywords?.gurunavi_url || '',
         gbpActionUrl: shop.keywords?.gbp_action_url || '',
+        postTimeHour: shop.keywords?.post_time_hour ?? 12,
       },
       templates: {
         star3: star3Templates,
@@ -372,6 +373,7 @@ app.post('/api/shops/:shopId/settings', async (req, res) => {
           hotpepper_url: keywords.hotpepperUrl,
           gurunavi_url: keywords.gurunaviUrl,
           gbp_action_url: keywords.gbpActionUrl,
+          post_time_hour: typeof keywords.postTimeHour === 'number' ? keywords.postTimeHour : 12,
         },
         create: {
           shop_id: shopId,
@@ -384,6 +386,7 @@ app.post('/api/shops/:shopId/settings', async (req, res) => {
           hotpepper_url: keywords.hotpepperUrl,
           gurunavi_url: keywords.gurunaviUrl,
           gbp_action_url: keywords.gbpActionUrl,
+          post_time_hour: typeof keywords.postTimeHour === 'number' ? keywords.postTimeHour : 12,
         }
       });
     }

@@ -42,6 +42,7 @@ model ShopKeywords {
   gurunavi_url       String?
   gbp_action_url     String?
   draft_posts        String?  // JSON-serialized string of 3 draft posts array
+  post_time_hour     Int      @default(12)
   updated_at         DateTime @updatedAt
 
   shop          Shop     @relation(fields: [shop_id], references: [id], onDelete: Cascade)

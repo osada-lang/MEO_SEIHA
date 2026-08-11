@@ -16,7 +16,8 @@ import {
   Sparkles,
   Send,
   Check,
-  BarChart3
+  BarChart3,
+  Clock
 } from 'lucide-react';
 
 const metaEnv = (import.meta as any).env;
@@ -96,6 +97,7 @@ interface SettingsData {
     hotpepperUrl: string;
     gurunaviUrl: string;
     gbpActionUrl: string;
+    postTimeHour?: number;
   };
   templates: {
     star3: string[];
@@ -1311,6 +1313,35 @@ export default function App() {
                 <LayoutDashboard className="w-5 h-5 text-indigo-600" />
                 AI自動投稿・キーワード設定
               </h2>
+
+              {/* Daily Posting Hour Dropdown */}
+              <div className="space-y-1.5 border-b border-slate-100/80 pb-4">
+                <label className="block text-[11px] font-black text-slate-400 tracking-wider uppercase">
+                  毎日自動投稿の時間帯
+                </label>
+                <p className="text-[9px] text-slate-400 leading-normal font-bold">
+                  おしらせがGoogleマップ（GBP）へ自動公開される時間帯を1時間単位で設定できます。（デフォルト：12時）
+                </p>
+                <div className="relative">
+                  <select
+                    className="block w-full border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brandBlue-500 appearance-none cursor-pointer"
+                    value={settings.keywords.postTimeHour !== undefined ? settings.keywords.postTimeHour : 12}
+                    onChange={(e) => setSettings({
+                      ...settings,
+                      keywords: { ...settings.keywords, postTimeHour: parseInt(e.target.value, 10) }
+                    })}
+                  >
+                    {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23].map((hour) => (
+                      <option key={hour} value={hour}>
+                        {hour}:00 頃
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
+                    <Clock className="w-4 h-4 text-slate-400" />
+                  </div>
+                </div>
+              </div>
 
               {/* Main Keywords */}
               <div className="space-y-1.5">
