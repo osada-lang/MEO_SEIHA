@@ -768,7 +768,7 @@ async function generateSingleDraft(shop: any, dayIndex: number): Promise<{ text:
 
   const { GoogleGenerativeAI } = require('@google/generative-ai');
   const genAI = new GoogleGenerativeAI(geminiApiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
 
   // Get current date context in Japanese to naturally incorporate seasonal topics
   const todayJp = new Date().toLocaleDateString('ja-JP', {

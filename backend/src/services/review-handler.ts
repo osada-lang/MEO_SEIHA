@@ -115,7 +115,7 @@ export class ReviewHandlerService {
    * Geminiを使用して、丁寧で真摯な謝罪下書き文を自動生成します（制約事項遵守）
    */
   private async generateApologyDraft(review: ReviewEvent, storeName: string, customPrompt?: string): Promise<string> {
-    const model = this.genAI!.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = this.genAI!.getGenerativeModel({ model: 'gemini-3.6-flash' });
 
     const prompt = `
       あなたは店舗「${storeName}」のオーナー代理として、お客様から届いたGoogleマップ上の低評価口コミ（★${review.starRating}）に対して、返信用のお詫びメッセージ下書きを作成してください。
@@ -163,7 +163,7 @@ export class ReviewHandlerService {
       throw new Error('❌ Gemini API is not initialized. Check GEMINI_API_KEY in .env');
     }
 
-    const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = this.genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
 
     const prompt = `
       あなたは店舗「${storeName}」のオーナー代理として、お客様から届いたGoogleマップ上の低評価口コミ（★${review.starRating}）に対して、返信用のお詫びメッセージ下書きを作成・書き直してください。
