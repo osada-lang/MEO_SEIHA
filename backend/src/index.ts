@@ -634,6 +634,30 @@ app.post('/api/shops/:shopId/reviews/:reviewId/reply', async (req, res) => {
       return res.status(404).json({ error: '口コミ情報が見つかりませんでした。' });
     }
 
+    // If Google API credentials are set and reviewId starts with accounts/ (is a real Google review resource),
+    // post the reply back to the real Google Business Profile platform!
+    const clientID = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+
+    if (clientID && clientSecret && refreshToken && reviewId.startsWith('accounts/')) {
+      console.log(`📡 Sending manual review reply to Google Business Profile API for: ${reviewId}`);
+      try {
+        const oauth2Client = new google.auth.OAuth2(clientID, clientSecret, 'http://localhost');
+        oauth2Client.setCredentials({ refresh_token: refreshToken });
+        await oauth2Client.request({
+          url: `https://mybusiness.googleapis.com/v4/${reviewId}/reply`,
+          method: 'PUT',
+          data: {
+            comment: replyText
+          }
+        });
+        console.log(`✅ Successfully published reply to Google Business Profile API!`);
+      } catch (gmbErr: any) {
+        console.error(`⚠️ Failed to publish reply to Google Business Profile API:`, gmbErr.message || gmbErr);
+      }
+    }
+
     // Update DB status to represent reply sent
     const updated = await prisma.reviewLogs.update({
       where: { review_id: reviewId },
@@ -917,6 +941,109 @@ app.post('/api/shops/:shopId/draft-posts/regenerate', async (req, res) => {
   }
 });
 
+// Helper to run daily post publication and draft sliding / generation
+async function executeDailyPostRollover(shopId: string) {
+  const shop = await prisma.shop.findUnique({
+    where: { id: shopId },
+    include: { keywords: true },
+  });
+
+  if (!shop) {
+    throw new Error('店舗が見つかりませんでした。');
+  }
+
+  let draftPostsArr = [];
+  if (shop.keywords && shop.keywords.draft_posts) {
+    try {
+      draftPostsArr = JSON.parse(shop.keywords.draft_posts);
+    } catch (err) {
+      console.error('❌ Failed to parse drafts:', err);
+    }
+  }
+
+  if (draftPostsArr.length === 0) {
+    throw new Error('下書きが存在しないため、自動生成処理を実行できません。先にダッシュボードで初期下書きを作成してください。');
+  }
+
+  // 1. The post being published today (Day 0)
+  const publishedPost = draftPostsArr[0];
+
+  // Perform actual posting to Google Business Profile API if location is set and token is set
+  let gbpPublished = false;
+  let gbpResponse = null;
+
+  const clientID = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+  const locationId = shop.google_location_id || (shop.keywords && shop.keywords.gbp_action_url);
+
+  if (clientID && clientSecret && refreshToken && locationId && locationId.startsWith('accounts/')) {
+    console.log(`📡 Attempting real GBP post creation for location: ${locationId}`);
+    try {
+      const oauth2Client = new google.auth.OAuth2(clientID, clientSecret, 'http://localhost');
+      oauth2Client.setCredentials({ refresh_token: refreshToken });
+      
+      // Post to GMB v4 LocalPosts API
+      const response = await oauth2Client.request({
+        url: `https://mybusiness.googleapis.com/v4/${locationId}/localPosts`,
+        method: 'POST',
+        data: {
+          languageCode: 'ja-JP',
+          summary: publishedPost.text,
+          topicType: 'STANDARD',
+        }
+      });
+
+      gbpPublished = true;
+      gbpResponse = response.data;
+      console.log('✅ Successfully published real post to Google Business Profile!');
+    } catch (gbpError: any) {
+      console.error('⚠️ Real GBP publishing failed:', gbpError.message || gbpError);
+    }
+  }
+
+  // 2. Perform the roll-over (Slide)
+  const nextDay0 = {
+    dayIndex: 0,
+    title: '今日投稿予定の下書き (Day 0)',
+    text: draftPostsArr[1].text,
+    subKeywords: draftPostsArr[1].subKeywords,
+  };
+
+  const nextDay1 = {
+    dayIndex: 1,
+    title: '明日投稿予定の下書き (Day 1)',
+    text: draftPostsArr[2].text,
+    subKeywords: draftPostsArr[2].subKeywords,
+  };
+
+  // 3. Generate a brand new Day 2 draft using Gemini AI!
+  const newDay2Raw = await generateSingleDraft(shop, 2);
+  const nextDay2 = {
+    dayIndex: 2,
+    title: '明後日投稿予定の下書き (Day 2)',
+    text: newDay2Raw.text,
+    subKeywords: newDay2Raw.subKeywords,
+  };
+
+  const newDrafts = [nextDay0, nextDay1, nextDay2];
+
+  // Save back to database
+  await prisma.shopKeywords.update({
+    where: { shop_id: shopId },
+    data: {
+      draft_posts: JSON.stringify(newDrafts)
+    }
+  });
+
+  return {
+    publishedPost,
+    gbpPublished,
+    gbpResponse,
+    newDrafts,
+  };
+}
+
 // POST /api/shops/:shopId/batch/run-daily-post
 // Simulates or runs the daily batch rollover:
 // 1. Publishes Day 0 draft (mocked/simulated or real GBP if connected)
@@ -926,111 +1053,18 @@ app.post('/api/shops/:shopId/batch/run-daily-post', async (req, res) => {
   const { shopId } = req.params;
 
   try {
-    const shop = await prisma.shop.findUnique({
-      where: { id: shopId },
-      include: { keywords: true },
-    });
-
-    if (!shop) {
-      return res.status(404).json({ error: '店舗が見つかりませんでした。' });
-    }
-
-    let draftPostsArr = [];
-    if (shop.keywords && shop.keywords.draft_posts) {
-      try {
-        draftPostsArr = JSON.parse(shop.keywords.draft_posts);
-      } catch (err) {
-        console.error('❌ Failed to parse drafts:', err);
-      }
-    }
-
-    if (draftPostsArr.length === 0) {
-      return res.status(400).json({ error: '下書きが存在しないため、自動生成処理を実行できません。先にダッシュボードで初期下書きを作成してください。' });
-    }
-
-    // 1. The post being published today (Day 0)
-    const publishedPost = draftPostsArr[0];
-
-    // Simulate/Perform actual posting to Google Business Profile API if location is set and token is set
-    let gbpPublished = false;
-    let gbpResponse = null;
-
-    const clientID = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
-    const locationId = shop.google_location_id || (shop.keywords && shop.keywords.gbp_action_url);
-
-    if (clientID && clientSecret && refreshToken && locationId && locationId.startsWith('accounts/')) {
-      console.log(`📡 Attempting real GBP post creation for location: ${locationId}`);
-      try {
-        const oauth2Client = new google.auth.OAuth2(clientID, clientSecret, 'http://localhost');
-        oauth2Client.setCredentials({ refresh_token: refreshToken });
-        
-        // Post to GMB v4 LocalPosts API
-        const response = await oauth2Client.request({
-          url: `https://mybusiness.googleapis.com/v4/${locationId}/localPosts`,
-          method: 'POST',
-          data: {
-            languageCode: 'ja-JP',
-            summary: publishedPost.text,
-            topicType: 'STANDARD',
-          }
-        });
-
-        gbpPublished = true;
-        gbpResponse = response.data;
-        console.log('✅ Successfully published real post to Google Business Profile!');
-      } catch (gbpError: any) {
-        console.error('⚠️ Real GBP publishing failed (expected in test sandbox):', gbpError.message || gbpError);
-      }
-    }
-
-    // 2. Perform the roll-over (Slide)
-    // Day 1 becomes Day 0
-    const nextDay0 = {
-      dayIndex: 0,
-      title: '今日投稿予定の下書き (Day 0)',
-      text: draftPostsArr[1].text,
-      subKeywords: draftPostsArr[1].subKeywords,
-    };
-
-    // Day 2 becomes Day 1
-    const nextDay1 = {
-      dayIndex: 1,
-      title: '明日投稿予定の下書き (Day 1)',
-      text: draftPostsArr[2].text,
-      subKeywords: draftPostsArr[2].subKeywords,
-    };
-
-    // 3. Generate a brand new Day 2 draft using Gemini AI!
-    const newDay2Raw = await generateSingleDraft(shop, 2);
-    const nextDay2 = {
-      dayIndex: 2,
-      title: '明後日投稿予定の下書き (Day 2)',
-      text: newDay2Raw.text,
-      subKeywords: newDay2Raw.subKeywords,
-    };
-
-    const newDrafts = [nextDay0, nextDay1, nextDay2];
-
-    // Save back to database
-    await prisma.shopKeywords.update({
-      where: { shop_id: shopId },
-      data: {
-        draft_posts: JSON.stringify(newDrafts)
-      }
-    });
+    const result = await executeDailyPostRollover(shopId);
 
     return res.json({
       success: true,
       message: '自動投稿およびスライド生成処理が正常に完了しました！',
       publishedPost: {
-        text: publishedPost.text,
-        subKeywords: publishedPost.subKeywords,
-        simulated: !gbpPublished,
-        gbpResponse,
+        text: result.publishedPost.text,
+        subKeywords: result.publishedPost.subKeywords,
+        simulated: !result.gbpPublished,
+        gbpResponse: result.gbpResponse,
       },
-      newDrafts,
+      newDrafts: result.newDrafts,
     });
 
   } catch (error: any) {
@@ -1039,10 +1073,177 @@ app.post('/api/shops/:shopId/batch/run-daily-post', async (req, res) => {
   }
 });
 
+// In-memory set to prevent double posting in the same hour
+const alreadyPostedToday = new Set<string>();
+
+// ==============================================================================
+// ⏱️ Background Automated Scheduler (Hourly execution check)
+// ==============================================================================
+async function runBackgroundScheduler() {
+  console.log(`\n⏰ [${new Date().toLocaleTimeString()}] Running MEO SEIHA background scheduler cycle...`);
+
+  const clientID = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+  const googleAuthAvailable = !!(clientID && clientSecret && refreshToken);
+
+  try {
+    const shops = await prisma.shop.findMany({
+      include: { keywords: true, templates: true },
+    });
+
+    const now = new Date();
+    const currentHour = now.getHours();
+    const todayStr = now.toISOString().split('T')[0]; // e.g. "2026-08-11"
+
+    for (const shop of shops) {
+      // 1. Check for Daily Automated Posting
+      if (shop.keywords) {
+        const postTimeHour = shop.keywords.post_time_hour ?? 12; // Default is 12 (Noon)
+
+        // If current hour matches the store's configured posting hour
+        if (currentHour === postTimeHour) {
+          const memoryKey = `${shop.id}_${todayStr}`;
+          if (!alreadyPostedToday.has(memoryKey)) {
+            console.log(`⏱️ Daily post triggered for store: "${shop.name}" at ${postTimeHour}:00 (Current Hour: ${currentHour})`);
+            alreadyPostedToday.add(memoryKey);
+
+            try {
+              await executeDailyPostRollover(shop.id);
+              console.log(`✅ Automatically completed daily post & slide for store: "${shop.name}"`);
+            } catch (postErr: any) {
+              console.error(`❌ Background daily post failed for store "${shop.name}":`, postErr.message || postErr);
+            }
+          }
+        }
+      }
+
+      // 2. Check and Fetch New Google Reviews for Auto-Replies
+      if (googleAuthAvailable && shop.google_location_id && shop.google_location_id.startsWith('accounts/')) {
+        console.log(`📡 Background fetching new GBP reviews for store: "${shop.name}"...`);
+        try {
+          const oauth2Client = new google.auth.OAuth2(clientID, clientSecret, 'http://localhost');
+          oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+          // Fetch latest 10 reviews from Google My Business API
+          const reviewsRes = await oauth2Client.request({
+            url: `https://mybusiness.googleapis.com/v4/${shop.google_location_id}/reviews`,
+            method: 'GET'
+          });
+
+          const gbpReviews = (reviewsRes.data as any).reviews || [];
+          for (const gReview of gbpReviews) {
+            const reviewId = gReview.name; // Full resource name e.g. "accounts/X/locations/Y/reviews/Z"
+            const reviewerName = gReview.reviewer?.displayName || '匿名ユーザー';
+
+            // Map GMB star rating string to number
+            let starRating: 1 | 2 | 3 | 4 | 5 = 3;
+            if (gReview.starRating === 'ONE') starRating = 1;
+            else if (gReview.starRating === 'TWO') starRating = 2;
+            else if (gReview.starRating === 'THREE') starRating = 3;
+            else if (gReview.starRating === 'FOUR') starRating = 4;
+            else if (gReview.starRating === 'FIVE') starRating = 5;
+
+            const comment = gReview.comment || '';
+            const createTime = gReview.createTime || new Date().toISOString();
+
+            // Check if this review is already saved in our database
+            const existing = await prisma.reviewLogs.findUnique({
+              where: { review_id: reviewId }
+            });
+
+            if (!existing) {
+              console.log(`🆕 Detected brand NEW review from Google for "${shop.name}": Rating=${starRating} | Reviewer="${reviewerName}"`);
+
+              // Handle new review using ReviewHandlerService
+              const handleResult = await reviewHandler.handleNewReview(
+                {
+                  reviewId,
+                  reviewerName,
+                  starRating: starRating as any,
+                  comment,
+                  createTime
+                },
+                shop.name,
+                shop.custom_review_prompt || undefined
+              );
+
+              // Check if auto-reply toggle is active
+              let finalReplyText = handleResult.replyText;
+              let isAutoReplied = false;
+
+              // If shop has reply_active enabled, we can automatically reply to Google
+              if (shop.reply_active) {
+                // If High Rating (3-5 stars), we automatically post the reply back to Google My Business API!
+                if (starRating >= 3) {
+                  console.log(`🤖 Auto-replying to high-rating review ${reviewId} with template...`);
+                  try {
+                    // Post reply to Google Business Profile API
+                    await oauth2Client.request({
+                      url: `https://mybusiness.googleapis.com/v4/${reviewId}/reply`,
+                      method: 'PUT',
+                      data: {
+                        comment: finalReplyText
+                      }
+                    });
+                    isAutoReplied = true;
+                    console.log(`✅ Successfully published auto-reply to Google for review ${reviewId}`);
+                  } catch (replyGmbErr: any) {
+                    console.error(`⚠️ Failed to publish auto-reply to Google for review ${reviewId}:`, replyGmbErr.message || replyGmbErr);
+                  }
+                } else {
+                  // Low Rating (1-2 stars) - Leave it as a draft for store owner's manual approval (with LINE alert already triggered)
+                  console.log(`⚠️ Low-rating review ${reviewId} requires manual review & approval. Apology draft created & LINE alert sent.`);
+                }
+              }
+
+              // Save the review to our local database
+              await prisma.reviewLogs.create({
+                data: {
+                  shop_id: shop.id,
+                  review_id: reviewId,
+                  reviewer_name: reviewerName,
+                  star_rating: starRating,
+                  comment,
+                  reply_text: finalReplyText,
+                  is_auto_replied: isAutoReplied,
+                  create_time: createTime,
+                }
+              });
+            }
+          }
+        } catch (scErr: any) {
+          console.error(`❌ Background review fetch failed for "${shop.name}":`, scErr.message || scErr);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('❌ Scheduler error:', err);
+  }
+}
+
+// Clear memory cache of already posted shops at midnight
+setInterval(() => {
+  const currentHour = new Date().getHours();
+  if (currentHour === 0) {
+    alreadyPostedToday.clear();
+    console.log('🧹 Cleared scheduler memory set for the new day.');
+  }
+}, 60 * 60 * 1000); // Check every hour
+
+// Run background scheduler cycle every 15 minutes
+const FIFTEEN_MINUTES = 15 * 60 * 1000;
+setInterval(runBackgroundScheduler, FIFTEEN_MINUTES);
+
 // Start express server
 app.listen(port, () => {
   console.log(`\n================================================================================`);
   console.log(`🚀 MEO SEIHA - Express API Server running on: http://localhost:${port}`);
   console.log(`📅 Started on: ${new Date().toLocaleString()}`);
   console.log(`================================================================================\n`);
+
+  // Run initial scheduler check immediately upon server startup
+  setTimeout(() => {
+    runBackgroundScheduler().catch(err => console.error('❌ Startup scheduler run failed:', err));
+  }, 5000); // Wait 5 seconds after startup to let initialization settle
 });
