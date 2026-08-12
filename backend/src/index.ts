@@ -173,6 +173,7 @@ app.get('/api/shops/:shopId/dashboard', async (req, res) => {
     let imageCount = mockDriveFiles.length;
     let firstFileId = mockDriveFiles.length > 0 ? mockDriveFiles[0].id : null;
     let driveFileIds: string[] = mockDriveFiles.slice(0, 3).map(f => f.id);
+    let driveFilesList: { id: string, name: string }[] = mockDriveFiles;
 
     const auth = getGoogleAuthClient();
     if (auth) {
@@ -180,11 +181,12 @@ app.get('/api/shops/:shopId/dashboard', async (req, res) => {
         const drive = google.drive({ version: 'v3', auth });
         const driveRes = await drive.files.list({
           q: `parents in '${shop.google_drive_folder_id || 'root'}' and (mimeType = 'image/jpeg' or mimeType = 'image/png') and trashed = false`,
-          fields: 'files(id)',
+          fields: 'files(id, name)',
           pageSize: 30,
         });
         if (driveRes.data.files) {
           imageCount = driveRes.data.files.length;
+          driveFilesList = driveRes.data.files.map((f: any) => ({ id: f.id || '', name: f.name || '' }));
           if (driveRes.data.files.length > 0) {
             firstFileId = driveRes.data.files[0].id || null;
             driveFileIds = driveRes.data.files.slice(0, 3).map(f => f.id || '');
@@ -232,14 +234,14 @@ app.get('/api/shops/:shopId/dashboard', async (req, res) => {
       if (draftPostsArr.length === 0) {
         console.log(`🤖 First-time auto-generating 3-day drafts for shop: ${shop.name}`);
         try {
-          const day0 = await generateSingleDraft(shop, 0);
-          const day1 = await generateSingleDraft(shop, 1);
-          const day2 = await generateSingleDraft(shop, 2);
+          const day0 = await generateSingleDraft(shop, 0, driveFilesList);
+          const day1 = await generateSingleDraft(shop, 1, driveFilesList);
+          const day2 = await generateSingleDraft(shop, 2, driveFilesList);
 
           draftPostsArr = [
-            { dayIndex: 0, title: '今日投稿予定の下書き (Day 0)', text: day0.text, subKeywords: day0.subKeywords },
-            { dayIndex: 1, title: '明日投稿予定の下書き (Day 1)', text: day1.text, subKeywords: day1.subKeywords },
-            { dayIndex: 2, title: '明後日投稿予定の下書き (Day 2)', text: day2.text, subKeywords: day2.subKeywords },
+            { dayIndex: 0, title: '今日投稿予定の下書き (Day 0)', text: day0.text, subKeywords: day0.subKeywords, imageFileId: day0.imageFileId || null },
+            { dayIndex: 1, title: '明日投稿予定の下書き (Day 1)', text: day1.text, subKeywords: day1.subKeywords, imageFileId: day1.imageFileId || null },
+            { dayIndex: 2, title: '明後日投稿予定の下書き (Day 2)', text: day2.text, subKeywords: day2.subKeywords, imageFileId: day2.imageFileId || null },
           ];
 
           // Save to database
@@ -275,8 +277,8 @@ app.get('/api/shops/:shopId/dashboard', async (req, res) => {
       previewImage,
       googleLocationId: shop.google_location_id,
       draftPosts: draftPostsArr.map((d: any, idx: number) => {
-        let imageFileId = null;
-        if (postingMode !== 'TEXT_ONLY') {
+        let imageFileId = d.imageFileId || null;
+        if (!imageFileId && postingMode !== 'TEXT_ONLY') {
           imageFileId = driveFileIds[idx] || null;
         }
         return {
@@ -817,18 +819,74 @@ app.post('/api/shops/:shopId/test-line-alert', async (req, res) => {
 });
 
 // Helper to generate a single day's MEO draft post using Gemini AI
-async function generateSingleDraft(shop: any, dayIndex: number): Promise<{ text: string, subKeywords: string[] }> {
+async function generateSingleDraft(
+  shop: any,
+  dayIndex: number,
+  driveFiles?: { id: string, name: string }[]
+): Promise<{ text: string, subKeywords: string[], imageFileId: string | null }> {
   const mainKeywords: string[] = JSON.parse(shop.keywords?.main_keywords || '[]');
   const subKeywords: string[] = JSON.parse(shop.keywords?.sub_keywords || '[]');
   const customPrompt = shop.keywords?.custom_prompt || '';
   const hpUrl = shop.keywords?.hp_url || '';
 
-  // Choose 2 to 3 randomized sub-keywords from the pool to balance frequency and ensure randomness
+  let imageFileId: string | null = null;
+  let imageTheme: string | null = null;
   const selectedSubKeywords: string[] = [];
-  if (subKeywords.length > 0) {
-    const shuffled = [...subKeywords].sort(() => 0.5 - Math.random());
-    const count = Math.floor(Math.random() * 2) + 2; // Randomly choose 2 or 3
-    selectedSubKeywords.push(...shuffled.slice(0, Math.min(count, shuffled.length)));
+
+  // Match sub-keywords with Google Drive files for prioritizing image themes
+  if (driveFiles && driveFiles.length > 0) {
+    let matchedFile: any = null;
+    let matchedKeyword: string = '';
+
+    for (const kw of subKeywords) {
+      const cleanKw = kw.trim();
+      if (!cleanKw) continue;
+
+      const found = driveFiles.find(f => {
+        const cleanFileName = (f.name || '').toLowerCase();
+        return cleanFileName.includes(cleanKw.toLowerCase());
+      });
+
+      if (found) {
+        matchedFile = found;
+        matchedKeyword = kw;
+        break; // Take the first matching subkeyword to lock down the priority
+      }
+    }
+
+    if (matchedFile) {
+      imageFileId = matchedFile.id;
+      // Strip extension like .jpg or .png to get the pure theme
+      imageTheme = matchedFile.name.replace(/\.[^/.]+$/, "");
+      selectedSubKeywords.push(matchedKeyword);
+
+      // Select 1 to 2 other random sub-keywords
+      const remaining = subKeywords.filter(k => k !== matchedKeyword);
+      if (remaining.length > 0) {
+        const shuffled = [...remaining].sort(() => 0.5 - Math.random());
+        const count = Math.floor(Math.random() * 2) + 1; // 1 or 2 more
+        selectedSubKeywords.push(...shuffled.slice(0, count));
+      }
+    } else {
+      // Fallback: Default ordered file selection by day index
+      const defaultFile = driveFiles[dayIndex % driveFiles.length];
+      imageFileId = defaultFile.id || null;
+      imageTheme = defaultFile.name ? defaultFile.name.replace(/\.[^/.]+$/, "") : null;
+
+      // Select 2 to 3 completely randomized sub-keywords
+      if (subKeywords.length > 0) {
+        const shuffled = [...subKeywords].sort(() => 0.5 - Math.random());
+        const count = Math.floor(Math.random() * 2) + 2; // 2 or 3
+        selectedSubKeywords.push(...shuffled.slice(0, Math.min(count, shuffled.length)));
+      }
+    }
+  } else {
+    // Standard randomized sub-keyword selection if no images are available
+    if (subKeywords.length > 0) {
+      const shuffled = [...subKeywords].sort(() => 0.5 - Math.random());
+      const count = Math.floor(Math.random() * 2) + 2; // 2 or 3
+      selectedSubKeywords.push(...shuffled.slice(0, Math.min(count, shuffled.length)));
+    }
   }
 
   const geminiApiKey = process.env.GEMINI_API_KEY;
@@ -848,6 +906,16 @@ async function generateSingleDraft(shop: any, dayIndex: number): Promise<{ text:
     weekday: 'long'
   });
 
+  let imagePromptContext = '';
+  if (imageTheme) {
+    imagePromptContext = `
+    【本日の投稿で使用する写真の被写体・メニュー名】: "${imageTheme}"
+    ※この写真は今回の投稿とセットでGoogleマップに掲載されます。写真と投稿文のミスマッチを100%防ぐため、必ずこの写真に写っている料理やサービス、被写体（"${imageTheme}"）の特徴や魅力、おすすめポイントなどにフォーカスした宣伝・紹介文をメインに執筆してください。（写真と無関係なおしらせや別メニューの紹介は絶対に書かないでください）`;
+  } else {
+    imagePromptContext = `
+    ※現在画像ストックがありません。店舗全体の魅力、季節に合わせたお気軽な案内など、汎用的なおしらせ宣伝文を作成してください。`;
+  }
+
   const prompt = `
     あなたは店舗「${shop.name}」のオーナー代理として、Googleマップ（MEO）用の日替わり投稿テキスト（おしらせ/最新情報）を自動作成してください。
 
@@ -855,6 +923,7 @@ async function generateSingleDraft(shop: any, dayIndex: number): Promise<{ text:
     - 店舗名: ${shop.name}
     - ターゲット層へのアピール・トーンマナー: ${customPrompt || '親しみやすく誠実なトーン。'}
     - 今日の日付: ${todayJp}
+    ${imagePromptContext}
 
     【作成の絶対ルール（厳守してください）】
     1. 毎回異なる構成・書き出し:
@@ -865,13 +934,15 @@ async function generateSingleDraft(shop: any, dayIndex: number): Promise<{ text:
        本日の日替わりサブキーワード [ ${selectedSubKeywords.join(', ')} ] を、文章の中に自然に盛り込んでください。
     4. 宣伝的な「事実文」を必ず1文挿入:
        「誰が、どこで、何を提供しているか」を示す客観的・具体的な宣伝的事実文を、必ず本文の中に1文だけ織り込んでください。この事実文の言い回しやアプローチは毎回変えてください。
-    5. 文字数と文章の質:
-       本文は【150文字〜250文字程度】に収め、一般客が読んで「行ってみたい」「相談してみたい」と思える、親しみやすく自然な日本語で仕上げてください。
-    6. 連絡先や署名情報の完全排除:
+    5. 段落分けと適切な改行（読みやすさ重視）:
+       文章が読みやすくなるよう、適宜2〜3つの論理的な段落に分け、段落の間に【必ず空行を1行】（改行2回）挟んでください。1行が長くなりすぎず、モバイル端末でも快適にスクロールしながら読めるスマートな体裁（MEOに最も適した配置）に仕上げてください。
+    6. 文字数と文章の質:
+       本文は【150文字〜250文字程度（改行を除く）】に収め、一般客が読んで「行ってみたい」「相談してみたい」と思える、親しみやすく自然な日本語で仕上げてください。
+    7. 連絡先や署名情報の完全排除:
        本文の中には、ホームページURL、電話番号、アクションボタンの文言（「詳細はこちら」「今すぐ予約」など）、住所、会社名や店舗名のフッター署名などは【絶対に】含めないでください。（これらはシステム側でボタンとして登録されるため、テキスト内に記載すると重複して見苦しくなります）
-    7. 記号・装飾の完全排除:
-       絵文字、マークダウン（**、#、*など）、見出し、箇条書き、目立つ記号（■、★、◆、▲、【】など）は【一切】使わないでください。純粋な文章テキストのみで出力してください。
-    8. 季節・時期の話題の自然な織り込み:
+    8. 記号・装飾の完全排除:
+       絵文字、マークダウン（**、#、*など）、見出し、箇条書き、目立つ記号（■、★、◆、▲、【】など）は【一切】使わないでください。純粋な文章テキストと改行のみで出力してください。
+    9. 季節・時期の話題 of 自然な織り込み:
        今日の日付（${todayJp}）を踏まえ、現在の季節や時期に合う話題（夏、お盆、暑さ対策など）を自然に入れられる場合は織り込んでください（無理に詰め込む必要はありません）。
 
     返される内容は自動作成した完成本文のみとし、説明、挨拶、マークダウン装飾（\`\`\`など）は一切含めないでください。`;
@@ -883,6 +954,7 @@ async function generateSingleDraft(shop: any, dayIndex: number): Promise<{ text:
   return {
     text: generatedText,
     subKeywords: selectedSubKeywords,
+    imageFileId,
   };
 }
 
@@ -928,21 +1000,40 @@ app.post('/api/shops/:shopId/draft-posts/regenerate', async (req, res) => {
       draftPostsArr = JSON.parse(shop.keywords.draft_posts);
     }
 
+    // Fetch Drive files for image matching
+    let driveFilesList: any[] = [];
+    const auth = getGoogleAuthClient();
+    if (auth && shop.google_drive_folder_id) {
+      try {
+        const drive = google.drive({ version: 'v3', auth });
+        const driveRes = await drive.files.list({
+          q: `parents in '${shop.google_drive_folder_id}' and (mimeType = 'image/jpeg' or mimeType = 'image/png') and trashed = false`,
+          fields: 'files(id, name)',
+          pageSize: 30,
+        });
+        if (driveRes.data.files) {
+          driveFilesList = driveRes.data.files.map((f: any) => ({ id: f.id || '', name: f.name || '' }));
+        }
+      } catch (driveErr) {
+        console.error('⚠️ Failed to fetch Drive files for regeneration:', driveErr);
+      }
+    }
+
     if (all) {
       // Regenerate all 3 days
-      const day0 = await generateSingleDraft(shop, 0);
-      const day1 = await generateSingleDraft(shop, 1);
-      const day2 = await generateSingleDraft(shop, 2);
+      const day0 = await generateSingleDraft(shop, 0, driveFilesList);
+      const day1 = await generateSingleDraft(shop, 1, driveFilesList);
+      const day2 = await generateSingleDraft(shop, 2, driveFilesList);
 
       draftPostsArr = [
-        { dayIndex: 0, title: '今日投稿予定の下書き (Day 0)', text: day0.text, subKeywords: day0.subKeywords },
-        { dayIndex: 1, title: '明日投稿予定の下書き (Day 1)', text: day1.text, subKeywords: day1.subKeywords },
-        { dayIndex: 2, title: '明後日投稿予定の下書き (Day 2)', text: day2.text, subKeywords: day2.subKeywords },
+        { dayIndex: 0, title: '今日投稿予定の下書き (Day 0)', text: day0.text, subKeywords: day0.subKeywords, imageFileId: day0.imageFileId || null },
+        { dayIndex: 1, title: '明日投稿予定の下書き (Day 1)', text: day1.text, subKeywords: day1.subKeywords, imageFileId: day1.imageFileId || null },
+        { dayIndex: 2, title: '明後日投稿予定の下書き (Day 2)', text: day2.text, subKeywords: day2.subKeywords, imageFileId: day2.imageFileId || null },
       ];
     } else {
       // Regenerate single day's draft
       const targetIndex = typeof dayIndex === 'number' ? dayIndex : 0;
-      const regenerated = await generateSingleDraft(shop, targetIndex);
+      const regenerated = await generateSingleDraft(shop, targetIndex, driveFilesList);
 
       const defaultTitles = [
         '今日投稿予定の下書き (Day 0)',
@@ -957,6 +1048,7 @@ app.post('/api/shops/:shopId/draft-posts/regenerate', async (req, res) => {
         title: defaultTitles[targetIndex] || `下書き (Day ${targetIndex})`,
         text: regenerated.text,
         subKeywords: regenerated.subKeywords,
+        imageFileId: regenerated.imageFileId || null,
       };
 
       if (existingIdx !== -1) {
@@ -1045,12 +1137,32 @@ async function executeDailyPostRollover(shopId: string) {
     }
   }
 
+  // Fetch Drive files for image matching
+  let driveFilesList: any[] = [];
+  const auth = getGoogleAuthClient();
+  if (auth && shop.google_drive_folder_id) {
+    try {
+      const drive = google.drive({ version: 'v3', auth });
+      const driveRes = await drive.files.list({
+        q: `parents in '${shop.google_drive_folder_id}' and (mimeType = 'image/jpeg' or mimeType = 'image/png') and trashed = false`,
+        fields: 'files(id, name)',
+        pageSize: 30,
+      });
+      if (driveRes.data.files) {
+        driveFilesList = driveRes.data.files.map((f: any) => ({ id: f.id || '', name: f.name || '' }));
+      }
+    } catch (driveErr) {
+      console.error('⚠️ Failed to fetch Drive files for batch rollover:', driveErr);
+    }
+  }
+
   // 2. Perform the roll-over (Slide)
   const nextDay0 = {
     dayIndex: 0,
     title: '今日投稿予定の下書き (Day 0)',
     text: draftPostsArr[1].text,
     subKeywords: draftPostsArr[1].subKeywords,
+    imageFileId: draftPostsArr[1].imageFileId || null,
   };
 
   const nextDay1 = {
@@ -1058,15 +1170,17 @@ async function executeDailyPostRollover(shopId: string) {
     title: '明日投稿予定の下書き (Day 1)',
     text: draftPostsArr[2].text,
     subKeywords: draftPostsArr[2].subKeywords,
+    imageFileId: draftPostsArr[2].imageFileId || null,
   };
 
   // 3. Generate a brand new Day 2 draft using Gemini AI!
-  const newDay2Raw = await generateSingleDraft(shop, 2);
+  const newDay2Raw = await generateSingleDraft(shop, 2, driveFilesList);
   const nextDay2 = {
     dayIndex: 2,
     title: '明後日投稿予定の下書き (Day 2)',
     text: newDay2Raw.text,
     subKeywords: newDay2Raw.subKeywords,
+    imageFileId: newDay2Raw.imageFileId || null,
   };
 
   const newDrafts = [nextDay0, nextDay1, nextDay2];
