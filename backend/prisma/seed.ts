@@ -34,7 +34,7 @@ async function main() {
     data: {
       id: 'thanx-create-uuid',
       name: '合同会社THANX CREATE',
-      email: 'thanx@example.com',
+      email: 'thanxcreate@gmail.com',
       password: 'password',
       role: 'OWNER',
       google_location_id: 'place_id_thanx_create_789',

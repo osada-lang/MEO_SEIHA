@@ -7,10 +7,11 @@ async function main() {
 
   const shopId = 'thanx-create-uuid';
 
-  // 1. Update Shop general fields (custom_review_prompt, reply_active, google_drive_folder_id, google_location_id)
+  // 1. Update Shop general fields (custom_review_prompt, reply_active, google_drive_folder_id, google_location_id, email)
   await prisma.shop.update({
     where: { id: shopId },
     data: {
+      email: 'thanxcreate@gmail.com',
       reply_active: true,
       google_drive_folder_id: '1AIgemm9-fvP-eLwP7p2p8Plja1mbOJtX',
       google_location_id: 'locations/3018418038085555463',

@@ -115,7 +115,7 @@ export default function App() {
   const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
 
   // Authentication Form
-  const [email, setEmail] = useState<string>('thanx@example.com'); // Default value for testing
+  const [email, setEmail] = useState<string>('thanxcreate@gmail.com'); // Default value for testing
   const [password, setPassword] = useState<string>('password');
   const [rememberMe, setRememberMe] = useState<boolean>(true);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -756,7 +756,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => {
-                    setEmail('thanx@example.com');
+                    setEmail('thanxcreate@gmail.com');
                     setPassword('password');
                   }}
                   className="w-full bg-slate-50 hover:bg-stripeIndigo-50 border border-slate-200 hover:border-stripeIndigo-200 text-stripeInk-secondary font-bold text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-between"
