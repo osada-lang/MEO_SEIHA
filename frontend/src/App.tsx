@@ -99,11 +99,6 @@ interface SettingsData {
     gbpActionUrl: string;
     postTimeHour?: number;
   };
-  templates: {
-    star3: string[];
-    star4: string[];
-    star5: string[];
-  };
 }
 
 export default function App() {
@@ -1559,113 +1554,6 @@ export default function App() {
                     customReviewPrompt: e.target.value
                   })}
                 />
-              </div>
-            </div>
-
-            {/* CARD: Star 3-5 Auto-reply Templates Form */}
-            <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-5">
-              <h2 className="text-base font-black text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
-                <MessageSquare className="w-5 h-5 text-emerald-600" />
-                高評価口コミ（★3〜★5）の自動返信定型文
-              </h2>
-              <p className="text-[10px] text-slate-400 font-bold leading-normal">
-                ONに設定されている場合、新着の★3〜★5の口コミに対し、以下の5つの定型文からランダムに1時間後に自動で返信されます（AI APIの追加コスト0円）。店舗の雰囲気に合わせて自由に言い回しを編集してください。
-              </p>
-
-              {/* Star 5 Templates Section */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-1.5 border-b border-slate-50 pb-1">
-                  <span className="text-xs font-black text-slate-800 flex items-center gap-1">
-                    ⭐⭐⭐⭐⭐ ★5（満点評価用）テンプレート
-                  </span>
-                  <span className="text-[9px] font-black bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded">5パターン</span>
-                </div>
-                <div className="space-y-2">
-                  {[0, 1, 2, 3, 4].map((idx) => (
-                    <div key={`star5-tpl-${idx}`} className="flex items-start gap-2">
-                      <span className="text-[10px] font-black text-slate-400 w-6 pt-2 text-center bg-slate-50 border border-slate-100 rounded-lg shrink-0">
-                        {idx + 1}
-                      </span>
-                      <textarea
-                        className="block w-full border border-slate-200 rounded-xl p-2.5 text-xs font-bold bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brandBlue-500 leading-relaxed min-h-[60px]"
-                        placeholder={`★5返信パターン ${idx + 1}`}
-                        value={settings.templates.star5[idx] || ''}
-                        onChange={(e) => {
-                          const updated = [...settings.templates.star5];
-                          updated[idx] = e.target.value;
-                          setSettings({
-                            ...settings,
-                            templates: { ...settings.templates, star5: updated }
-                          });
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Star 4 Templates Section */}
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center gap-1.5 border-b border-slate-50 pb-1">
-                  <span className="text-xs font-black text-slate-800 flex items-center gap-1">
-                    ⭐⭐⭐⭐ ★4（高評価用）テンプレート
-                  </span>
-                  <span className="text-[9px] font-black bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded">5パターン</span>
-                </div>
-                <div className="space-y-2">
-                  {[0, 1, 2, 3, 4].map((idx) => (
-                    <div key={`star4-tpl-${idx}`} className="flex items-start gap-2">
-                      <span className="text-[10px] font-black text-slate-400 w-6 pt-2 text-center bg-slate-50 border border-slate-100 rounded-lg shrink-0">
-                        {idx + 1}
-                      </span>
-                      <textarea
-                        className="block w-full border border-slate-200 rounded-xl p-2.5 text-xs font-bold bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brandBlue-500 leading-relaxed min-h-[60px]"
-                        placeholder={`★4返信パターン ${idx + 1}`}
-                        value={settings.templates.star4[idx] || ''}
-                        onChange={(e) => {
-                          const updated = [...settings.templates.star4];
-                          updated[idx] = e.target.value;
-                          setSettings({
-                            ...settings,
-                            templates: { ...settings.templates, star4: updated }
-                          });
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Star 3 Templates Section */}
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center gap-1.5 border-b border-slate-50 pb-1">
-                  <span className="text-xs font-black text-slate-800 flex items-center gap-1">
-                    ⭐⭐⭐ ★3（普通評価用）テンプレート
-                  </span>
-                  <span className="text-[9px] font-black bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">5パターン</span>
-                </div>
-                <div className="space-y-2">
-                  {[0, 1, 2, 3, 4].map((idx) => (
-                    <div key={`star3-tpl-${idx}`} className="flex items-start gap-2">
-                      <span className="text-[10px] font-black text-slate-400 w-6 pt-2 text-center bg-slate-50 border border-slate-100 rounded-lg shrink-0">
-                        {idx + 1}
-                      </span>
-                      <textarea
-                        className="block w-full border border-slate-200 rounded-xl p-2.5 text-xs font-bold bg-slate-50/50 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brandBlue-500 leading-relaxed min-h-[60px]"
-                        placeholder={`★3返信パターン ${idx + 1}`}
-                        value={settings.templates.star3[idx] || ''}
-                        onChange={(e) => {
-                          const updated = [...settings.templates.star3];
-                          updated[idx] = e.target.value;
-                          setSettings({
-                            ...settings,
-                            templates: { ...settings.templates, star3: updated }
-                          });
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
 

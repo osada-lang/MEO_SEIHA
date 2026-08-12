@@ -304,7 +304,6 @@ app.get('/api/shops/:shopId/settings', async (req, res) => {
       where: { id: shopId },
       include: {
         keywords: true,
-        templates: true,
       }
     });
 
@@ -314,10 +313,6 @@ app.get('/api/shops/:shopId/settings', async (req, res) => {
 
     const mainKeywords = shop.keywords ? JSON.parse(shop.keywords.main_keywords) : [];
     const subKeywords = shop.keywords ? JSON.parse(shop.keywords.sub_keywords) : [];
-
-    const star3Templates = shop.templates ? JSON.parse(shop.templates.templates_star3) : [];
-    const star4Templates = shop.templates ? JSON.parse(shop.templates.templates_star4) : [];
-    const star5Templates = shop.templates ? JSON.parse(shop.templates.templates_star5) : [];
 
     return res.json({
       shopId: shop.id,
@@ -335,11 +330,6 @@ app.get('/api/shops/:shopId/settings', async (req, res) => {
         gurunaviUrl: shop.keywords?.gurunavi_url || '',
         gbpActionUrl: shop.keywords?.gbp_action_url || '',
         postTimeHour: (shop.keywords as any)?.post_time_hour ?? 12,
-      },
-      templates: {
-        star3: star3Templates,
-        star4: star4Templates,
-        star5: star5Templates,
       }
     });
   } catch (error) {
@@ -351,7 +341,7 @@ app.get('/api/shops/:shopId/settings', async (req, res) => {
 // POST /api/shops/:shopId/settings
 app.post('/api/shops/:shopId/settings', async (req, res) => {
   const { shopId } = req.params;
-  const { replyActive, customReviewPrompt, keywords, templates } = req.body;
+  const { replyActive, customReviewPrompt, keywords } = req.body;
 
   try {
     // 1. Update Shop Profile details
@@ -394,24 +384,6 @@ app.post('/api/shops/:shopId/settings', async (req, res) => {
           gurunavi_url: keywords.gurunaviUrl,
           gbp_action_url: keywords.gbpActionUrl,
           post_time_hour: typeof keywords.postTimeHour === 'number' ? keywords.postTimeHour : 12,
-        }
-      });
-    }
-
-    // 3. Update/Upsert ReplyTemplates
-    if (templates) {
-      await prisma.replyTemplates.upsert({
-        where: { shop_id: shopId },
-        update: {
-          templates_star3: JSON.stringify(templates.star3 || []),
-          templates_star4: JSON.stringify(templates.star4 || []),
-          templates_star5: JSON.stringify(templates.star5 || []),
-        },
-        create: {
-          shop_id: shopId,
-          templates_star3: JSON.stringify(templates.star3 || []),
-          templates_star4: JSON.stringify(templates.star4 || []),
-          templates_star5: JSON.stringify(templates.star5 || []),
         }
       });
     }
