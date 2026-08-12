@@ -809,8 +809,10 @@ export default function App() {
         </div>
       )}
 
-      {/* 🚀 Active Screen Container */}
-      <main className="flex-1 max-w-md lg:max-w-6xl w-full mx-auto px-4 py-5 space-y-5">
+      {/* Wrapper to handle sidebar indentation for desktop/mobile layouts */}
+      <div className="flex-1 flex flex-col sm:pl-60">
+        {/* 🚀 Active Screen Container */}
+        <main className="flex-1 max-w-md lg:max-w-6xl w-full mx-auto px-4 py-5 space-y-5">
 
         {/* 1️⃣ SCREEN: Dashboard */}
         {activeTab === 'dashboard' && dashboard && (
@@ -1816,6 +1818,7 @@ export default function App() {
           </div>
         )}
       </main>
+      </div>
 
       {/* 📱 Mobile Sticky Navigation Bar (Mobile-first Navigation tab switcher) */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200/80 px-4 py-2 shadow-lg flex items-center justify-around sm:hidden no-print">
@@ -1934,16 +1937,6 @@ export default function App() {
           <p className="text-[9px] text-slate-400 font-bold truncate" title={currentShop.email}>{currentShop.email}</p>
         </div>
       </aside>
-
-      {/* Adjust viewport spacer for desktop sidebar layout */}
-      <style>{`
-        @media (min-width: 640px) {
-          main {
-            margin-left: 15rem; /* Equivalent to w-60 sidebar */
-            max-width: calc(100% - 15rem - 2rem);
-          }
-        }
-      `}</style>
     </div>
   );
 }
