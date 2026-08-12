@@ -140,7 +140,7 @@ export class ReviewHandlerService {
    * Geminiを使用して、高評価に対する感謝とアピールを兼ねた魅力的な返信文を自動生成します
    */
   private async generatePositiveDraft(review: ReviewEvent, storeName: string, customPrompt?: string): Promise<string> {
-    const model = this.genAI!.getGenerativeModel({ model: 'gemini-3.6-flash' });
+    const model = this.genAI!.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const prompt = `
       あなたは店舗「${storeName}」のオーナー代理として、お客様から届いたGoogleマップ上の高評価口コミ（★${review.starRating}）に対して、返信用のお礼メッセージ下書きを作成してください。
@@ -179,7 +179,7 @@ export class ReviewHandlerService {
    * Geminiを使用して、丁寧で真摯な謝罪下書き文を自動生成します（制約事項遵守）
    */
   private async generateApologyDraft(review: ReviewEvent, storeName: string, customPrompt?: string): Promise<string> {
-    const model = this.genAI!.getGenerativeModel({ model: 'gemini-3.6-flash' });
+    const model = this.genAI!.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const prompt = `
       あなたは店舗「${storeName}」のオーナー代理として、お客様から届いたGoogleマップ上の低評価口コミ（★${review.starRating}）に対して、返信用のお詫びメッセージ下書きを作成してください。
@@ -227,7 +227,7 @@ export class ReviewHandlerService {
       throw new Error('❌ Gemini API is not initialized. Check GEMINI_API_KEY in .env');
     }
 
-    const model = this.genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
+    const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const isLowRating = review.starRating <= 2;
 
