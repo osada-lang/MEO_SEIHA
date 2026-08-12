@@ -896,7 +896,7 @@ async function generateSingleDraft(
 
   const { GoogleGenerativeAI } = require('@google/generative-ai');
   const genAI = new GoogleGenerativeAI(geminiApiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
 
   // Get current date context in Japanese to naturally incorporate seasonal topics
   const todayJp = new Date().toLocaleDateString('ja-JP', {
@@ -947,9 +947,23 @@ async function generateSingleDraft(
 
     返される内容は自動作成した完成本文のみとし、説明、挨拶、マークダウン装飾（\`\`\`など）は一切含めないでください。`;
 
-  const result = await model.generateContent(prompt);
-  const response = await result.response;
-  const generatedText = response.text().trim().replace(/```/g, '');
+  let generatedText = '';
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    generatedText = response.text().trim().replace(/```/g, '');
+  } catch (err: any) {
+    console.warn('⚠️ gemini-3.6-flash failed or was under heavy load. Falling back to stable gemini-1.5-flash:', err.message || err);
+    try {
+      const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const result = await fallbackModel.generateContent(prompt);
+      const response = await result.response;
+      generatedText = response.text().trim().replace(/```/g, '');
+    } catch (fallbackErr: any) {
+      console.error('❌ Both gemini-3.6-flash and gemini-1.5-flash failed:', fallbackErr.message || fallbackErr);
+      throw fallbackErr;
+    }
+  }
 
   return {
     text: generatedText,

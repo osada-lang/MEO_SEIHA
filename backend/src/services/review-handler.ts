@@ -140,7 +140,7 @@ export class ReviewHandlerService {
    * Geminiを使用して、高評価に対する感謝とアピールを兼ねた魅力的な返信文を自動生成します
    */
   private async generatePositiveDraft(review: ReviewEvent, storeName: string, customPrompt?: string): Promise<string> {
-    const model = this.genAI!.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = this.genAI!.getGenerativeModel({ model: 'gemini-3.6-flash' });
 
     const prompt = `
       あなたは店舗「${storeName}」のオーナー代理として、お客様から届いたGoogleマップ上の高評価口コミ（★${review.starRating}）に対して、返信用のお礼メッセージ下書きを作成してください。
@@ -153,7 +153,7 @@ export class ReviewHandlerService {
       2. コメント本文がある場合の対応（自然な共感と魅力の調和）:
          お客様の口コミに具体的なコメント本文がある場合は、褒められた内容（接客、施術、空間、技術など）に対して自然に反応し共感してください。
       3. コメント本文がない場合の対応（誠実な短文・宣伝禁止）:
-         星評価のみの場合は、ご評価いただいたことに対するシンプルな感謝の言葉と、次回ご来店の際にもよりご満足いただけるよう努める旨の丁寧な姿勢を述べて完結させてください。強引な売込や不自然なキーワードは含めないでください。
+         星評価のみの場合は、ご評価いただいたことに対するシンプルな感謝 of 言葉と、次回ご来店の際にもよりご満足いただけるよう努める旨の丁寧な姿勢を述べて完結させてください。強引な売込や不自然なキーワードは含めないでください。
       4. キーワードの不自然な多用禁止:
          文脈に全く合わない過度なSEOキーワードの詰め込みは禁止します。あくまでも自然な文章のなかで、店舗のこだわりや魅力を調和させて表現してください。
       5. 絵文字・記号の適度な使用:
@@ -170,8 +170,16 @@ export class ReviewHandlerService {
       const response = await result.response;
       return response.text().trim();
     } catch (error: any) {
-      console.error('❌ Failed to generate positive draft with Gemini:', error);
-      return 'この度は温かい評価と口コミのご投稿、誠にありがとうございます！お客様からのお褒めの言葉が、スタッフ一同大変励みになります。これからもより一層喜んでいただけるようサービス向上に努めてまいります。またのご来店を心よりお待ちしております！';
+      console.warn('⚠️ gemini-3.6-flash failed in generatePositiveDraft, trying gemini-1.5-flash:', error.message || error);
+      try {
+        const fallbackModel = this.genAI!.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const result = await fallbackModel.generateContent(prompt);
+        const response = await result.response;
+        return response.text().trim();
+      } catch (fallbackErr: any) {
+        console.error('❌ Both gemini-3.6-flash and gemini-1.5-flash failed in generatePositiveDraft:', fallbackErr.message || fallbackErr);
+        return 'この度は温かい評価と口コミのご投稿、誠にありがとうございます！お客様からのお褒めの言葉が、スタッフ一同大変励みになります。これからもより一層喜んでいただけるようサービス向上に努めてまいります。またのご来店を心よりお待ちしております！';
+      }
     }
   }
 
@@ -179,7 +187,7 @@ export class ReviewHandlerService {
    * Geminiを使用して、丁寧で真摯な謝罪下書き文を自動生成します（制約事項遵守）
    */
   private async generateApologyDraft(review: ReviewEvent, storeName: string, customPrompt?: string): Promise<string> {
-    const model = this.genAI!.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = this.genAI!.getGenerativeModel({ model: 'gemini-3.6-flash' });
 
     const prompt = `
       あなたは店舗「${storeName}」のオーナー代理として、お客様から届いたGoogleマップ上の低評価口コミ（★${review.starRating}）に対して、返信用のお詫びメッセージ下書きを作成してください。
@@ -209,8 +217,16 @@ export class ReviewHandlerService {
       const response = await result.response;
       return response.text().trim();
     } catch (error: any) {
-      console.error('❌ Failed to generate apology draft with Gemini:', error);
-      return 'この度は当店のご利用に際し、ご満足のいくサービスを提供できず、不快な思いをさせてしまいましたことを深くお詫び申し上げます。今後、このようなことがないようスタッフへの指導とサービスの改善に努めてまいります。';
+      console.warn('⚠️ gemini-3.6-flash failed in generateApologyDraft, trying gemini-1.5-flash:', error.message || error);
+      try {
+        const fallbackModel = this.genAI!.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const result = await fallbackModel.generateContent(prompt);
+        const response = await result.response;
+        return response.text().trim();
+      } catch (fallbackErr: any) {
+        console.error('❌ Both gemini-3.6-flash and gemini-1.5-flash failed in generateApologyDraft:', fallbackErr.message || fallbackErr);
+        return 'この度は当店のご利用に際し、ご満足のいくサービスを提供できず、不快な思いをさせてしまいましたことを深くお詫び申し上げます。今後、このようなことがないようスタッフへの指導とサービスの改善に努めてまいります。';
+      }
     }
   }
 
@@ -227,7 +243,7 @@ export class ReviewHandlerService {
       throw new Error('❌ Gemini API is not initialized. Check GEMINI_API_KEY in .env');
     }
 
-    const model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = this.genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
 
     const isLowRating = review.starRating <= 2;
 
@@ -256,10 +272,18 @@ export class ReviewHandlerService {
       const response = await result.response;
       return response.text().trim();
     } catch (error: any) {
-      console.error('❌ Failed to regenerate apology draft with Gemini:', error);
-      return isLowRating
-        ? 'この度は当店のご利用に際し、ご満足のいくサービスを提供できず、不快な思いをさせてしまいましたことを深くお詫び申し上げます。今後、このようなことがないようスタッフへの指導とサービスの改善に努めてまいります。'
-        : 'この度はご来店いただき、また素晴らしい評価をありがとうございます。これからも愛されるお店を目指して努力してまいります。またのお越しをお待ちしております！';
+      console.warn('⚠️ gemini-3.6-flash failed in generateCustomApologyDraft, trying gemini-1.5-flash:', error.message || error);
+      try {
+        const fallbackModel = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const result = await fallbackModel.generateContent(prompt);
+        const response = await result.response;
+        return response.text().trim();
+      } catch (fallbackErr: any) {
+        console.error('❌ Both gemini-3.6-flash and gemini-1.5-flash failed in generateCustomApologyDraft:', fallbackErr.message || fallbackErr);
+        return isLowRating
+          ? 'この度は当店のご利用に際し、ご満足のいくサービスを提供できず、不快な思いをさせてしまいましたことを深くお詫び申し上げます。今後、このようなことがないようスタッフへの指導とサービスの改善に努めてまいります。'
+          : 'この度はご来店いただき、また素晴らしい評価をありがとうございます。これからも愛されるお店を目指して努力してまいります。またのお越しをお待ちしております！';
+      }
     }
   }
 
