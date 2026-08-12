@@ -44,6 +44,7 @@ interface DraftPost {
   title: string;
   text: string;
   subKeywords: string[];
+  imageFileId?: string | null;
 }
 
 interface DashboardData {
@@ -1054,6 +1055,24 @@ export default function App() {
                                 </p>
                               )}
                             </div>
+
+                            {d.imageFileId && !isEditing && (
+                              <div className="flex items-center gap-3 bg-slate-50/50 border border-slate-100 rounded-xl p-2.5">
+                                <div className="w-14 h-14 bg-slate-900/5 rounded-lg overflow-hidden border border-slate-200/60 shrink-0">
+                                  <img
+                                    src={`${API_BASE.replace('/api', '')}/api/shops/${currentShop?.id}/drive-images/${d.imageFileId}/view`}
+                                    alt="投稿予定の写真"
+                                    className="object-cover w-full h-full"
+                                  />
+                                </div>
+                                <div className="text-[10px] text-slate-500 font-bold space-y-0.5">
+                                  <span className="text-[9px] bg-brandBlue-50 text-brandBlue-700 border border-brandBlue-100/60 px-1.5 py-0.5 rounded-full font-black">
+                                    📸 投稿予定の写真
+                                  </span>
+                                  <p className="pt-0.5">この下書きと一緒にGoogleマップへ投稿されます。</p>
+                                </div>
+                              </div>
+                            )}
 
                             <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-slate-100">
                               {isEditing ? (

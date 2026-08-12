@@ -172,6 +172,8 @@ app.get('/api/shops/:shopId/dashboard', async (req, res) => {
     // Determine photo stock count
     let imageCount = mockDriveFiles.length;
     let firstFileId = mockDriveFiles.length > 0 ? mockDriveFiles[0].id : null;
+    let driveFileIds: string[] = mockDriveFiles.slice(0, 3).map(f => f.id);
+
     const auth = getGoogleAuthClient();
     if (auth) {
       try {
@@ -185,6 +187,9 @@ app.get('/api/shops/:shopId/dashboard', async (req, res) => {
           imageCount = driveRes.data.files.length;
           if (driveRes.data.files.length > 0) {
             firstFileId = driveRes.data.files[0].id || null;
+            driveFileIds = driveRes.data.files.slice(0, 3).map(f => f.id || '');
+          } else {
+            driveFileIds = [];
           }
         }
       } catch (e) {
@@ -269,7 +274,16 @@ app.get('/api/shops/:shopId/dashboard', async (req, res) => {
       nextPostTime: `本日 ${(shop.keywords as any)?.post_time_hour ?? 12}:00 予定`,
       previewImage,
       googleLocationId: shop.google_location_id,
-      draftPosts: draftPostsArr,
+      draftPosts: draftPostsArr.map((d: any, idx: number) => {
+        let imageFileId = null;
+        if (postingMode !== 'TEXT_ONLY') {
+          imageFileId = driveFileIds[idx] || null;
+        }
+        return {
+          ...d,
+          imageFileId
+        };
+      }),
     });
   } catch (error) {
     console.error('❌ Dashboard fetch error:', error);
@@ -1102,6 +1116,40 @@ app.post('/api/shops/:shopId/batch/run-daily-post', async (req, res) => {
   }
 });
 
+// Helper to dynamically resolve short/numeric GMB location ID into a full accounts/.../locations/... GMB path
+async function resolveGoogleLocationPath(oauth2Client: any, locationIdInput: string): Promise<string | null> {
+  if (!locationIdInput) return null;
+  
+  // If already starts with accounts/, return as is
+  if (locationIdInput.startsWith('accounts/')) {
+    return locationIdInput;
+  }
+
+  // Extract pure numerical ID
+  const numMatch = locationIdInput.match(/\d+/);
+  if (!numMatch) return null;
+  const numericalId = numMatch[0];
+
+  try {
+    const mybusiness = google.mybusinessaccountmanagement({
+      version: 'v1',
+      auth: oauth2Client
+    });
+    const accountsRes = await mybusiness.accounts.list();
+    const accounts = accountsRes.data.accounts || [];
+    
+    // Find first valid account/organization name
+    for (const account of accounts) {
+      if (account.name) {
+        return `${account.name}/locations/${numericalId}`;
+      }
+    }
+  } catch (err: any) {
+    console.error('❌ Failed to resolve GMB location path prefix dynamically:', err.message || err);
+  }
+  return null;
+}
+
 // In-memory set to prevent double posting in the same hour
 const alreadyPostedToday = new Set<string>();
 
@@ -1148,76 +1196,87 @@ async function runBackgroundScheduler() {
       }
 
       // 2. Check and Fetch New Google Reviews for Auto-Replies
-      if (googleAuthAvailable && shop.google_location_id && shop.google_location_id.startsWith('accounts/')) {
-        console.log(`📡 Background fetching new GBP reviews for store: "${shop.name}"...`);
+      if (googleAuthAvailable && shop.google_location_id) {
         try {
           const oauth2Client = new google.auth.OAuth2(clientID, clientSecret, 'http://localhost');
           oauth2Client.setCredentials({ refresh_token: refreshToken });
 
-          // Fetch latest 10 reviews from Google My Business API
-          const reviewsRes = await oauth2Client.request({
-            url: `https://mybusiness.googleapis.com/v4/${shop.google_location_id}/reviews`,
-            method: 'GET'
-          });
+          // Dynamically resolve GMB location path (handles accounts/... or raw numerical IDs)
+          const locationPath = await resolveGoogleLocationPath(oauth2Client, shop.google_location_id);
 
-          const gbpReviews = (reviewsRes.data as any).reviews || [];
-          for (const gReview of gbpReviews) {
-            const reviewId = gReview.name; // Full resource name e.g. "accounts/X/locations/Y/reviews/Z"
-            const reviewerName = gReview.reviewer?.displayName || '匿名ユーザー';
+          if (locationPath) {
+            console.log(`📡 Background fetching new GBP reviews for store: "${shop.name}" using path: "${locationPath}"...`);
 
-            // Map GMB star rating string to number
-            let starRating: 1 | 2 | 3 | 4 | 5 = 3;
-            if (gReview.starRating === 'ONE') starRating = 1;
-            else if (gReview.starRating === 'TWO') starRating = 2;
-            else if (gReview.starRating === 'THREE') starRating = 3;
-            else if (gReview.starRating === 'FOUR') starRating = 4;
-            else if (gReview.starRating === 'FIVE') starRating = 5;
-
-            const comment = gReview.comment || '';
-            const createTime = gReview.createTime || new Date().toISOString();
-
-            // Check if this review is already saved in our database
-            const existing = await prisma.reviewLogs.findUnique({
-              where: { review_id: reviewId }
+            // Fetch latest 10 reviews from Google My Business API
+            const reviewsRes = await oauth2Client.request({
+              url: `https://mybusiness.googleapis.com/v4/${locationPath}/reviews`,
+              method: 'GET'
             });
 
-            if (!existing) {
-              console.log(`🆕 Detected brand NEW review from Google for "${shop.name}": Rating=${starRating} | Reviewer="${reviewerName}"`);
+            const gbpReviews = (reviewsRes.data as any).reviews || [];
+            for (const gReview of gbpReviews) {
+              const reviewId = gReview.name; // Full resource name e.g. "accounts/X/locations/Y/reviews/Z"
+              const reviewerName = gReview.reviewer?.displayName || '匿名ユーザー';
 
-              // Handle new review using ReviewHandlerService (pass shop.reply_active)
-              const handleResult = await reviewHandler.handleNewReview(
-                {
-                  reviewId,
-                  reviewerName,
-                  starRating: starRating as any,
-                  comment,
-                  createTime
-                },
-                shop.name,
-                shop.custom_review_prompt || undefined,
-                shop.reply_active
-              );
+              // Map GMB star rating string to number
+              let starRating: 1 | 2 | 3 | 4 | 5 = 3;
+              if (gReview.starRating === 'ONE') starRating = 1;
+              else if (gReview.starRating === 'TWO') starRating = 2;
+              else if (gReview.starRating === 'THREE') starRating = 3;
+              else if (gReview.starRating === 'FOUR') starRating = 4;
+              else if (gReview.starRating === 'FIVE') starRating = 5;
 
-              // All new reviews are saved initially as draft (is_auto_replied = false)
-              // Low-star reviews await owner's manual approval
-              // High-star reviews:
-              // - If reply_active is OFF: await owner's manual approval
-              // - If reply_active is ON: await the 1-hour delay in the auto-posting scheduler
-              let finalReplyText = handleResult.replyText;
+              const comment = gReview.comment || '';
+              const createTime = gReview.createTime || new Date().toISOString();
 
-              // Save the review to our local database
-              await prisma.reviewLogs.create({
-                data: {
-                  shop_id: shop.id,
-                  review_id: reviewId,
-                  reviewer_name: reviewerName,
-                  star_rating: starRating,
-                  comment,
-                  reply_text: finalReplyText,
-                  is_auto_replied: false,
-                  create_time: new Date(createTime), // Robust Date parsing
-                }
+              // SAFETY FILTER: Ignore any reviews posted prior to the store registration date (shop.created_at)
+              const reviewCreateDate = new Date(createTime);
+              const shopCreatedDate = new Date(shop.created_at);
+
+              if (reviewCreateDate < shopCreatedDate) {
+                // Completely skip pre-integration historical reviews
+                continue;
+              }
+
+              // Check if this review is already saved in our database
+              const existing = await prisma.reviewLogs.findUnique({
+                where: { review_id: reviewId }
               });
+
+              if (!existing) {
+                console.log(`🆕 Detected brand NEW review from Google for "${shop.name}": Rating=${starRating} | Reviewer="${reviewerName}"`);
+
+                // Handle new review using ReviewHandlerService (pass shop.reply_active)
+                const handleResult = await reviewHandler.handleNewReview(
+                  {
+                    reviewId,
+                    reviewerName,
+                    starRating: starRating as any,
+                    comment,
+                    createTime
+                  },
+                  shop.name,
+                  shop.custom_review_prompt || undefined,
+                  shop.reply_active
+                );
+
+                // All new reviews are saved initially as draft (is_auto_replied = false)
+                let finalReplyText = handleResult.replyText;
+
+                // Save the review to our local database
+                await prisma.reviewLogs.create({
+                  data: {
+                    shop_id: shop.id,
+                    review_id: reviewId,
+                    reviewer_name: reviewerName,
+                    star_rating: starRating,
+                    comment,
+                    reply_text: finalReplyText,
+                    is_auto_replied: false,
+                    create_time: new Date(createTime), // Robust Date parsing
+                  }
+                });
+              }
             }
           }
         } catch (scErr: any) {
@@ -1226,45 +1285,50 @@ async function runBackgroundScheduler() {
       }
 
       // 3. Process Delayed Auto-Replies (ON status, star >= 3, is_auto_replied === false, 1-hour elapsed)
-      if (googleAuthAvailable && shop.google_location_id && shop.google_location_id.startsWith('accounts/') && shop.reply_active) {
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000); // 1 hour ago
+      if (googleAuthAvailable && shop.google_location_id && shop.reply_active) {
         try {
-          const pendingAutoReviews = await prisma.reviewLogs.findMany({
-            where: {
-              shop_id: shop.id,
-              star_rating: { gte: 3 },
-              is_auto_replied: false,
-              reply_text: { not: null },
-              create_time: { lte: oneHourAgo }
-            }
-          });
+          const oauth2Client = new google.auth.OAuth2(clientID, clientSecret, 'http://localhost');
+          oauth2Client.setCredentials({ refresh_token: refreshToken });
 
-          if (pendingAutoReviews.length > 0) {
-            console.log(`🤖 [自動返信スケジューラー] 店舗: 「${shop.name}」に対して 1時間経過した全自動返信対象の口コミが ${pendingAutoReviews.length}件 検出されました。自動送信を開始します。`);
-            const oauth2Client = new google.auth.OAuth2(clientID, clientSecret, 'http://localhost');
-            oauth2Client.setCredentials({ refresh_token: refreshToken });
+          const locationPath = await resolveGoogleLocationPath(oauth2Client, shop.google_location_id);
 
-            for (const pRev of pendingAutoReviews) {
-              if (pRev.reply_text) {
-                console.log(`📡 [自動送信実行] 口コミ: ${pRev.review_id} | 投稿者: ${pRev.reviewer_name} | 返信内容: "${pRev.reply_text}"`);
-                try {
-                  // Post to Google GMB API
-                  await oauth2Client.request({
-                    url: `https://mybusiness.googleapis.com/v4/${pRev.review_id}/reply`,
-                    method: 'PUT',
-                    data: {
-                      comment: pRev.reply_text
-                    }
-                  });
+          if (locationPath) {
+            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000); // 1 hour ago
+            const pendingAutoReviews = await prisma.reviewLogs.findMany({
+              where: {
+                shop_id: shop.id,
+                star_rating: { gte: 3 },
+                is_auto_replied: false,
+                reply_text: { not: null },
+                create_time: { lte: oneHourAgo }
+              }
+            });
 
-                  // Mark as replied in database
-                  await prisma.reviewLogs.update({
-                    where: { id: pRev.id },
-                    data: { is_auto_replied: true }
-                  });
-                  console.log(`✅ [自動送信成功] 口コミ: ${pRev.review_id} への返信投稿を完了しました。`);
-                } catch (gmbErr: any) {
-                  console.error(`❌ [自動送信失敗] 口コミ: ${pRev.review_id} への返信投稿に失敗しました:`, gmbErr.message || gmbErr);
+            if (pendingAutoReviews.length > 0) {
+              console.log(`🤖 [自動返信スケジューラー] 店舗: 「${shop.name}」に対して 1時間経過した全自動返信対象 of 口コミが ${pendingAutoReviews.length}件 検出されました。自動送信を開始します。`);
+
+              for (const pRev of pendingAutoReviews) {
+                if (pRev.reply_text) {
+                  console.log(`📡 [自動送信実行] 口コミ: ${pRev.review_id} | 投稿者: ${pRev.reviewer_name} | 返信内容: "${pRev.reply_text}"`);
+                  try {
+                    // Post to Google GMB API
+                    await oauth2Client.request({
+                      url: `https://mybusiness.googleapis.com/v4/${pRev.review_id}/reply`,
+                      method: 'PUT',
+                      data: {
+                        comment: pRev.reply_text
+                      }
+                    });
+
+                    // Mark as replied in database
+                    await prisma.reviewLogs.update({
+                      where: { id: pRev.id },
+                      data: { is_auto_replied: true }
+                    });
+                    console.log(`✅ [自動送信成功] 口コミ: ${pRev.review_id} への返信投稿を完了しました。`);
+                  } catch (gmbErr: any) {
+                    console.error(`❌ [自動送信失敗] 口コミ: ${pRev.review_id} への返信投稿に失敗しました:`, gmbErr.message || gmbErr);
+                  }
                 }
               }
             }
