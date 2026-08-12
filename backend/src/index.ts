@@ -953,14 +953,14 @@ async function generateSingleDraft(
     const response = await result.response;
     generatedText = response.text().trim().replace(/```/g, '');
   } catch (err: any) {
-    console.warn('⚠️ gemini-3.6-flash failed or was under heavy load. Falling back to stable gemini-1.5-flash:', err.message || err);
+    console.warn('⚠️ gemini-3.6-flash failed or was under heavy load. Falling back to stable gemini-3.5-flash:', err.message || err);
     try {
-      const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
       const result = await fallbackModel.generateContent(prompt);
       const response = await result.response;
       generatedText = response.text().trim().replace(/```/g, '');
     } catch (fallbackErr: any) {
-      console.error('❌ Both gemini-3.6-flash and gemini-1.5-flash failed:', fallbackErr.message || fallbackErr);
+      console.error('❌ Both gemini-3.6-flash and gemini-3.5-flash failed:', fallbackErr.message || fallbackErr);
       throw fallbackErr;
     }
   }

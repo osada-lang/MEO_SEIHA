@@ -170,14 +170,14 @@ export class ReviewHandlerService {
       const response = await result.response;
       return response.text().trim();
     } catch (error: any) {
-      console.warn('⚠️ gemini-3.6-flash failed in generatePositiveDraft, trying gemini-1.5-flash:', error.message || error);
+      console.warn('⚠️ gemini-3.6-flash failed in generatePositiveDraft, trying gemini-3.5-flash:', error.message || error);
       try {
-        const fallbackModel = this.genAI!.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const fallbackModel = this.genAI!.getGenerativeModel({ model: 'gemini-3.5-flash' });
         const result = await fallbackModel.generateContent(prompt);
         const response = await result.response;
         return response.text().trim();
       } catch (fallbackErr: any) {
-        console.error('❌ Both gemini-3.6-flash and gemini-1.5-flash failed in generatePositiveDraft:', fallbackErr.message || fallbackErr);
+        console.error('❌ Both gemini-3.6-flash and gemini-3.5-flash failed in generatePositiveDraft:', fallbackErr.message || fallbackErr);
         return 'この度は温かい評価と口コミのご投稿、誠にありがとうございます！お客様からのお褒めの言葉が、スタッフ一同大変励みになります。これからもより一層喜んでいただけるようサービス向上に努めてまいります。またのご来店を心よりお待ちしております！';
       }
     }
@@ -217,15 +217,15 @@ export class ReviewHandlerService {
       const response = await result.response;
       return response.text().trim();
     } catch (error: any) {
-      console.warn('⚠️ gemini-3.6-flash failed in generateApologyDraft, trying gemini-1.5-flash:', error.message || error);
+      console.warn('⚠️ gemini-3.6-flash failed in generateApologyDraft, trying gemini-3.5-flash:', error.message || error);
       try {
-        const fallbackModel = this.genAI!.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const fallbackModel = this.genAI!.getGenerativeModel({ model: 'gemini-3.5-flash' });
         const result = await fallbackModel.generateContent(prompt);
         const response = await result.response;
         return response.text().trim();
       } catch (fallbackErr: any) {
-        console.error('❌ Both gemini-3.6-flash and gemini-1.5-flash failed in generateApologyDraft:', fallbackErr.message || fallbackErr);
-        return 'この度は当店のご利用に際し、ご満足のいくサービスを提供できず、不快な思いをさせてしまいましたことを深くお詫び申し上げます。今後、このようなことがないようスタッフへの指導とサービスの改善に努めてまいります。';
+        console.error('❌ Both gemini-3.6-flash and gemini-3.5-flash failed in generateApologyDraft:', fallbackErr.message || fallbackErr);
+        return 'この度は当店のご利用に際し、ご満足のいくサービスを提供できず、不快な思いをさせてしまいましたことを深くお詫び申し上げます。今後、このようなことがないようスタッフへの指導 and サービスの改善に努めてまいります。';
       }
     }
   }
@@ -272,14 +272,14 @@ export class ReviewHandlerService {
       const response = await result.response;
       return response.text().trim();
     } catch (error: any) {
-      console.warn('⚠️ gemini-3.6-flash failed in generateCustomApologyDraft, trying gemini-1.5-flash:', error.message || error);
+      console.warn('⚠️ gemini-3.6-flash failed in generateCustomApologyDraft, trying gemini-3.5-flash:', error.message || error);
       try {
-        const fallbackModel = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const fallbackModel = this.genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
         const result = await fallbackModel.generateContent(prompt);
         const response = await result.response;
         return response.text().trim();
       } catch (fallbackErr: any) {
-        console.error('❌ Both gemini-3.6-flash and gemini-1.5-flash failed in generateCustomApologyDraft:', fallbackErr.message || fallbackErr);
+        console.error('❌ Both gemini-3.6-flash and gemini-3.5-flash failed in generateCustomApologyDraft:', fallbackErr.message || fallbackErr);
         return isLowRating
           ? 'この度は当店のご利用に際し、ご満足のいくサービスを提供できず、不快な思いをさせてしまいましたことを深くお詫び申し上げます。今後、このようなことがないようスタッフへの指導とサービスの改善に努めてまいります。'
           : 'この度はご来店いただき、また素晴らしい評価をありがとうございます。これからも愛されるお店を目指して努力してまいります。またのお越しをお待ちしております！';
