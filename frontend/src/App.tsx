@@ -814,149 +814,194 @@ export default function App() {
       )}
 
       {/* 🚀 Active Screen Container */}
-      <main className="flex-1 max-w-md w-full mx-auto px-4 py-5 space-y-5">
+      <main className="flex-1 max-w-md lg:max-w-6xl w-full mx-auto px-4 py-5 space-y-5">
 
         {/* 1️⃣ SCREEN: Dashboard */}
         {activeTab === 'dashboard' && dashboard && (
-          <div className="space-y-4">
-            {/* Store Title Board */}
-            <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">現在管理中の店舗</p>
-                <h2 className="text-xl font-black text-slate-900 leading-tight mt-0.5">{dashboard.shopName}</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:space-y-0 space-y-4 items-start">
+            {/* Left Panel: Store Info, Status, Switches */}
+            <div className="lg:col-span-5 space-y-4">
+              {/* Store Title Board */}
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">現在管理中の店舗</p>
+                  <h2 className="text-xl font-black text-slate-900 leading-tight mt-0.5">{dashboard.shopName}</h2>
+                </div>
+
+                {/* 📍 Quick Links Grid */}
+                <div className="grid grid-cols-2 gap-2.5 pt-2">
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=Google&query_place_id=${dashboard.googleLocationId || ''}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="bg-slate-50 hover:bg-indigo-50 border border-slate-200/80 hover:border-indigo-200 p-3 rounded-xl transition-all flex items-center justify-between text-left group"
+                  >
+                    <div>
+                      <span className="text-[10px] font-black text-slate-400 group-hover:text-indigo-500 transition-colors uppercase block">Google Maps</span>
+                      <span className="text-xs font-bold text-slate-800 block mt-0.5">店舗を確認</span>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
+                  </a>
+
+                  <a
+                    href={`https://business.google.com/performance/l/${dashboard.googleLocationId || ''}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="bg-slate-50 hover:bg-emerald-50 border border-slate-200/80 hover:border-emerald-200 p-3 rounded-xl transition-all flex items-center justify-between text-left group"
+                  >
+                    <div>
+                      <span className="text-[10px] font-black text-slate-400 group-hover:text-emerald-600 transition-colors uppercase block">GBPパフォーマンス</span>
+                      <span className="text-xs font-bold text-slate-800 block mt-0.5">アクション数確認</span>
+                    </div>
+                    <BarChart3 className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 transition-colors" />
+                  </a>
+                </div>
               </div>
 
-              {/* 📍 Quick Links Grid */}
-              <div className="grid grid-cols-2 gap-2.5 pt-2">
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=Google&query_place_id=${dashboard.googleLocationId || ''}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="bg-slate-50 hover:bg-indigo-50 border border-slate-200/80 hover:border-indigo-200 p-3 rounded-xl transition-all flex items-center justify-between text-left group"
+              {/* CARD 3: Blink Emergency review alert banner */}
+              {dashboard.pendingReviewsCount > 0 && (
+                <button
+                  onClick={() => setActiveTab('reviews')}
+                  className="w-full bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-900 rounded-2xl p-4 shadow-sm flex items-center justify-between text-left group animate-pulse transition-all"
                 >
-                  <div>
-                    <span className="text-[10px] font-black text-slate-400 group-hover:text-indigo-500 transition-colors uppercase block">Google Maps</span>
-                    <span className="text-xs font-bold text-slate-800 block mt-0.5">店舗を確認</span>
+                  <div className="flex items-center gap-3">
+                    <span className="w-9 h-9 rounded-xl bg-rose-500/10 flex items-center justify-center shrink-0">
+                      <AlertTriangle className="w-5 h-5 text-rose-600" />
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-extrabold">🚨 緊急お詫び下書きの承認待ち</h3>
+                      <p className="text-xs text-rose-700 font-bold mt-0.5">
+                        星1・星2の低評価口コミが <span className="underline font-black text-sm">{dashboard.pendingReviewsCount}件</span> 届いています。
+                      </p>
+                    </div>
                   </div>
-                  <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
-                </a>
+                  <span className="text-xs font-black text-rose-700 bg-rose-100 group-hover:bg-rose-200 py-1.5 px-3 rounded-lg shrink-0 transition-all border border-rose-300">
+                    今すぐ編集 ➔
+                  </span>
+                </button>
+              )}
 
-                <a
-                  href={`https://business.google.com/performance/l/${dashboard.googleLocationId || ''}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="bg-slate-50 hover:bg-emerald-50 border border-slate-200/80 hover:border-emerald-200 p-3 rounded-xl transition-all flex items-center justify-between text-left group"
-                >
-                  <div>
-                    <span className="text-[10px] font-black text-slate-400 group-hover:text-emerald-600 transition-colors uppercase block">GBPパフォーマンス</span>
-                    <span className="text-xs font-bold text-slate-800 block mt-0.5">アクション数確認</span>
+              {/* CARD 1: Scheduled Post Card */}
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <span className="text-xs font-black text-slate-800 tracking-wider flex items-center gap-1.5 uppercase">
+                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                    本日の自動投稿ステータス
+                  </span>
+                  <span className="text-[10px] font-black bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">
+                    予約完了
+                  </span>
+                </div>
+
+                <div className="space-y-3.5">
+                  <div className="flex items-start justify-between gap-4 text-xs font-bold">
+                    <span className="text-slate-400 uppercase">次回投稿予定</span>
+                    <span className="text-slate-900 text-right">{dashboard.nextPostTime}</span>
                   </div>
-                  <BarChart3 className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 transition-colors" />
-                </a>
+
+                  <div className="flex items-start justify-between gap-4 text-xs font-bold border-t border-slate-50 pt-3">
+                    <span className="text-slate-400 uppercase">動作最適化モード</span>
+                    <span className="text-brandBlue-600 text-right max-w-[200px] leading-relaxed">
+                      {dashboard.postingModeLabel}
+                    </span>
+                  </div>
+
+                  {dashboard.imageCount > 0 ? (
+                    <div className="border-t border-slate-50 pt-3 space-y-2">
+                      <span className="text-xs font-black text-slate-400 block uppercase">本日投稿予定の写真</span>
+                      <div className="relative rounded-xl overflow-hidden border border-slate-200/80 aspect-video bg-slate-900/5 flex items-center justify-center">
+                        <img
+                          src={dashboard.previewImage ? (dashboard.previewImage.startsWith('http') ? dashboard.previewImage : `${API_BASE.replace('/api', '')}${dashboard.previewImage}`) : "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=600"}
+                          alt="Next Scheduled Post Preview"
+                          className="object-cover w-full h-full"
+                        />
+                        <div className="absolute top-2.5 left-2.5 bg-slate-950/80 text-white text-[9px] font-bold tracking-wider uppercase px-2 py-0.5 rounded">
+                          Drive同期写真
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 text-center space-y-1.5 mt-3">
+                      <AlertTriangle className="w-5 h-5 text-indigo-500 mx-auto" />
+                      <p className="text-xs font-extrabold text-slate-800">画像ストックが 0枚 です</p>
+                      <p className="text-[10px] text-slate-500 font-bold leading-relaxed max-w-[240px] mx-auto">
+                        画像なしの「テキストのみ投稿」を継続します。写真をストック管理画面から追加してください。
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* CARD 2: Toggle Switch Card */}
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <span className="text-xs font-black text-slate-800 tracking-wider flex items-center gap-1.5 uppercase">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    自動返信ステータス (星3〜★5のみ対象)
+                  </span>
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                    dashboard.replyActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {dashboard.replyActive ? '作動中' : '停止中'}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between py-2">
+                  <div>
+                    <h3 className="text-sm font-extrabold text-slate-900">口コミ自動返信機能</h3>
+                    <p className="text-[10px] text-slate-400 font-bold leading-relaxed mt-0.5">
+                      ONの場合、星3〜5の高評価に対して、1時間後にGemini AIが自動作成した最適な返信文で自動送信します。<br />
+                      OFFの場合、星3〜5の高評価に対しても、低評価同様に店主様のLINEにAI返信下書きを通知し、承認後に送信します。
+                    </p>
+                  </div>
+
+                  {/* Smooth Animated Toggle */}
+                  <button
+                    type="button"
+                    onClick={handleToggleReply}
+                    disabled={isToggling}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      dashboard.replyActive ? 'bg-emerald-500' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        dashboard.replyActive ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* CARD 3: Blink Emergency review alert banner */}
-            {dashboard.pendingReviewsCount > 0 && (
-              <button
-                onClick={() => setActiveTab('reviews')}
-                className="w-full bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-900 rounded-2xl p-4 shadow-sm flex items-center justify-between text-left group animate-pulse transition-all"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="w-9 h-9 rounded-xl bg-rose-500/10 flex items-center justify-center shrink-0">
-                    <AlertTriangle className="w-5 h-5 text-rose-600" />
-                  </span>
-                  <div>
-                    <h3 className="text-sm font-extrabold">🚨 緊急お詫び下書きの承認待ち</h3>
-                    <p className="text-xs text-rose-700 font-bold mt-0.5">
-                      星1・星2の低評価口コミが <span className="underline font-black text-sm">{dashboard.pendingReviewsCount}件</span> 届いています。
-                    </p>
-                  </div>
-                </div>
-                <span className="text-xs font-black text-rose-700 bg-rose-100 group-hover:bg-rose-200 py-1.5 px-3 rounded-lg shrink-0 transition-all border border-rose-300">
-                  今すぐ編集 ➔
-                </span>
-              </button>
-            )}
-
-            {/* CARD 1: Scheduled Post Card */}
-            <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            {/* Right Panel: 3-Day Editable Scheduled Drafts Panel */}
+            <div className="lg:col-span-7 bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
                 <span className="text-xs font-black text-slate-800 tracking-wider flex items-center gap-1.5 uppercase">
-                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
-                  本日の自動投稿ステータス
+                  <Sparkles className="w-4 h-4 text-indigo-500" />
+                  📅 3日先までのAI自動投稿・予約下書き
                 </span>
-                <span className="text-[10px] font-black bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">
-                  予約完了
-                </span>
+                <button
+                  type="button"
+                  disabled={isRegeneratingAll}
+                  onClick={() => handleRegenerateDraft(0, true)}
+                  className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-black py-1.5 px-3 rounded-full transition-all flex items-center gap-1 border border-indigo-100 disabled:opacity-50"
+                >
+                  {isRegeneratingAll ? (
+                    <>
+                      <RefreshCw className="w-3 h-3 animate-spin" />
+                      一括作成中...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3 h-3" />
+                      3日分を一括作成 🪄
+                    </>
+                  )}
+                </button>
               </div>
 
-              <div className="space-y-3.5">
-                <div className="flex items-start justify-between gap-4 text-xs font-bold">
-                  <span className="text-slate-400 uppercase">次回投稿予定</span>
-                  <span className="text-slate-900 text-right">{dashboard.nextPostTime}</span>
-                </div>
-
-                <div className="flex items-start justify-between gap-4 text-xs font-bold border-t border-slate-50 pt-3">
-                  <span className="text-slate-400 uppercase">動作最適化モード</span>
-                  <span className="text-brandBlue-600 text-right max-w-[200px] leading-relaxed">
-                    {dashboard.postingModeLabel}
-                  </span>
-                </div>
-
-                {dashboard.imageCount > 0 ? (
-                  <div className="border-t border-slate-50 pt-3 space-y-2">
-                    <span className="text-xs font-black text-slate-400 block uppercase">本日投稿予定の写真</span>
-                    <div className="relative rounded-xl overflow-hidden border border-slate-200/80 aspect-video bg-slate-900/5 flex items-center justify-center">
-                      {/* For prototype, show dynamic placeholder or seeded pictures based on shop */}
-                      <img
-                        src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=600"
-                        alt="Next Scheduled Post Preview"
-                        className="object-cover w-full h-full"
-                      />
-                      <div className="absolute top-2.5 left-2.5 bg-slate-950/80 text-white text-[9px] font-bold tracking-wider uppercase px-2 py-0.5 rounded">
-                        Drive同期写真
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 text-center space-y-1.5 mt-3">
-                    <AlertTriangle className="w-5 h-5 text-indigo-500 mx-auto" />
-                    <p className="text-xs font-extrabold text-slate-800">画像ストックが 0枚 です</p>
-                    <p className="text-[10px] text-slate-500 font-bold leading-relaxed max-w-[240px] mx-auto">
-                      画像なしの「テキストのみ投稿」を継続します。写真をストック管理画面から追加してください。
-                    </p>
-                  </div>
-                )}
-
-                {/* 📅 MEO SEIHA - 3-Day Editable Scheduled Drafts Panel */}
-                <div className="border-t border-slate-100 pt-4 space-y-3.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black text-slate-800 tracking-wider flex items-center gap-1.5 uppercase">
-                      <Sparkles className="w-4 h-4 text-indigo-500" />
-                      📅 3日先までのAI自動投稿・予約下書き
-                    </span>
-                    <button
-                      type="button"
-                      disabled={isRegeneratingAll}
-                      onClick={() => handleRegenerateDraft(0, true)}
-                      className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-black py-1.5 px-3 rounded-full transition-all flex items-center gap-1 border border-indigo-100 disabled:opacity-50"
-                    >
-                      {isRegeneratingAll ? (
-                        <>
-                          <RefreshCw className="w-3 h-3 animate-spin" />
-                          一括作成中...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-3 h-3" />
-                          3日分を一括作成 🪄
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  <div className="space-y-4">
+              <div className="space-y-4">
                     {dashboard.draftPosts && dashboard.draftPosts.length > 0 ? (
                       dashboard.draftPosts.map((d) => {
                         const isEditing = !!isEditingDraft[d.dayIndex];
@@ -1122,48 +1167,6 @@ export default function App() {
                       </button>
                     </div>
                   )}
-                </div>
-              </div>
-            </div>
-
-            {/* CARD 2: Toggle Switch Card */}
-            <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <span className="text-xs font-black text-slate-800 tracking-wider flex items-center gap-1.5 uppercase">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                  自動返信ステータス (星3〜★5のみ対象)
-                </span>
-                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
-                  dashboard.replyActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
-                }`}>
-                  {dashboard.replyActive ? '作動中' : '停止中'}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between py-2">
-                <div>
-                  <h3 className="text-sm font-extrabold text-slate-900">口コミ自動返信機能</h3>
-                  <p className="text-[10px] text-slate-400 font-bold leading-relaxed mt-0.5">
-                    ONの場合、星3〜5の高評価に対して、1時間後に登録済みの定型文からランダムに自動送信します。
-                  </p>
-                </div>
-
-                {/* Smooth Animated Toggle */}
-                <button
-                  type="button"
-                  onClick={handleToggleReply}
-                  disabled={isToggling}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    dashboard.replyActive ? 'bg-emerald-500' : 'bg-slate-300'
-                  }`}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                      dashboard.replyActive ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
-              </div>
             </div>
           </div>
         )}
@@ -1227,20 +1230,8 @@ export default function App() {
                   {photos.map((photo) => (
                     <div key={photo.id} className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm flex flex-col group relative">
                       <div className="aspect-square bg-slate-900/5 relative flex items-center justify-center overflow-hidden border-b border-slate-100">
-                        {/* Mock image thumbnail generator based on unsplash to look beautiful in demo */}
                         <img
-                          src={
-                            photo.dataUrl || (
-                              photo.id.startsWith('mock-')
-                                ? `https://images.unsplash.com/photo-${
-                                    photo.id === 'mock-img-001' ? '1560066984-138dadb4c035' :
-                                    photo.id === 'mock-img-002' ? '1569718212165-3a8278d5f624' :
-                                    photo.id === 'mock-img-003' ? '1497366216548-37526070297c' :
-                                    photo.id === 'mock-img-004' ? '1514933651103-005eec06c04b' : '1554118811-1e0d58224f24'
-                                  }?auto=format&fit=crop&q=80&w=300`
-                                : 'https://images.unsplash.com/photo-1542038784456-1ea8e935640e?auto=format&fit=crop&q=80&w=300' // Generic photo icon represent for live upload
-                            )
-                          }
+                          src={photo.dataUrl || `${API_BASE.replace('/api', '')}/api/shops/${currentShop?.id}/drive-images/${photo.id}/view`}
                           alt={photo.name}
                           className="object-cover w-full h-full"
                         />
@@ -1721,10 +1712,10 @@ export default function App() {
                 </div>
               ) : (
                 reviews.map((review: ReviewLog) => {
-                  const isPendingApology = review.star_rating <= 2 && !review.is_auto_replied;
+                  const isPendingReply = !review.is_auto_replied;
 
                   // Sync local text input state dynamically
-                  if (isPendingApology && editingReplyText[review.review_id] === undefined) {
+                  if (isPendingReply && editingReplyText[review.review_id] === undefined) {
                     editingReplyText[review.review_id] = review.reply_text || '';
                   }
 
@@ -1732,7 +1723,9 @@ export default function App() {
                     <div
                       key={review.id}
                       className={`bg-white border rounded-2xl p-5 shadow-sm space-y-4 transition-all ${
-                        isPendingApology ? 'border-rose-200 bg-rose-50/10' : 'border-slate-200/80'
+                        isPendingReply 
+                          ? (review.star_rating <= 2 ? 'border-rose-200 bg-rose-50/10' : 'border-indigo-200 bg-indigo-50/10') 
+                          : 'border-slate-200/80'
                       }`}
                     >
                       {/* Customer post header */}
@@ -1759,13 +1752,29 @@ export default function App() {
 
                         {/* Status label tag */}
                         <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
-                          isPendingApology
-                            ? 'bg-rose-100 text-rose-700 border border-rose-200 animate-pulse'
-                            : review.star_rating >= 3
-                            ? 'bg-indigo-50 text-indigo-700 border border-indigo-100'
-                            : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                          isPendingReply
+                            ? (review.star_rating <= 2
+                              ? 'bg-rose-100 text-rose-700 border border-rose-200 animate-pulse'
+                              : (dashboard?.replyActive
+                                ? 'bg-amber-100 text-amber-700 border border-amber-200 animate-pulse'
+                                : 'bg-indigo-100 text-indigo-700 border border-indigo-200 animate-pulse'
+                              )
+                            )
+                            : (review.star_rating >= 3
+                              ? 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                              : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                            )
                         }`}>
-                          {isPendingApology ? '承認待ち (保留中)' : review.star_rating >= 3 ? '自動送信完了' : '手動送信完了'}
+                          {isPendingReply
+                            ? (review.star_rating <= 2
+                              ? '承認待ち (保留中)'
+                              : (dashboard?.replyActive
+                                ? '自動送信待ち (1時間後)'
+                                : '承認待ち (保留中)'
+                              )
+                            )
+                            : (review.star_rating >= 3 ? '自動送信完了' : '手動送信完了')
+                          }
                         </span>
                       </div>
 
@@ -1777,15 +1786,21 @@ export default function App() {
                       </div>
 
                       {/* Reply Area */}
-                      {isPendingApology ? (
-                        /* Low star apology manual check + editor (AI draft) */
-                        <div className="space-y-3.5 border-t border-dashed border-rose-200 pt-3.5">
-                          <div className="flex items-center gap-1 text-[11px] font-black text-rose-700 uppercase">
-                            <Sparkles className="w-4 h-4 text-rose-500 fill-rose-50" />
-                            AI作成されたお詫び文下書き (編集可能)
+                      {isPendingReply ? (
+                        /* Manual check + editor (AI draft) */
+                        <div className={`space-y-3.5 border-t border-dashed pt-3.5 ${
+                          review.star_rating <= 2 ? 'border-rose-200' : 'border-indigo-200'
+                        }`}>
+                          <div className={`flex items-center gap-1 text-[11px] font-black uppercase ${
+                            review.star_rating <= 2 ? 'text-rose-700' : 'text-indigo-700'
+                          }`}>
+                            <Sparkles className={`w-4 h-4 ${review.star_rating <= 2 ? 'text-rose-500 fill-rose-50' : 'text-indigo-500 fill-indigo-50'}`} />
+                            {review.star_rating <= 2 ? 'AI作成されたお詫び文下書き (編集可能)' : 'AI作成された返信文下書き (編集可能)'}
                           </div>
                           <textarea
-                            className="block w-full border border-rose-200 rounded-xl p-3.5 text-xs font-bold bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500 leading-relaxed min-h-[120px]"
+                            className={`block w-full border rounded-xl p-3.5 text-xs font-bold bg-white text-slate-800 focus:outline-none focus:ring-2 leading-relaxed min-h-[120px] ${
+                              review.star_rating <= 2 ? 'border-rose-200 focus:ring-rose-500' : 'border-indigo-200 focus:ring-indigo-500'
+                            }`}
                             value={editingReplyText[review.review_id] || ''}
                             onChange={(e) => {
                               setEditingReplyText({
@@ -1804,7 +1819,7 @@ export default function App() {
                             <div className="flex flex-wrap gap-1.5">
                               <button
                                 type="button"
-                                onClick={() => handleRegenerateReply(review.review_id, 'より丁寧でフォーマルな謝罪文にしてください。')}
+                                onClick={() => handleRegenerateReply(review.review_id, review.star_rating <= 2 ? 'より丁寧でフォーマルな謝罪文にしてください。' : 'より丁寧でフォーマルな感謝・アピール返信文にしてください。')}
                                 disabled={isLoading}
                                 className="bg-white hover:bg-indigo-50 border border-slate-200 text-slate-700 text-[10px] font-bold py-1 px-2.5 rounded-lg transition-all active:scale-[0.97] flex items-center gap-1"
                               >
@@ -1812,7 +1827,7 @@ export default function App() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleRegenerateReply(review.review_id, '150文字以内の非常に簡潔なお詫び文にまとめてください。')}
+                                onClick={() => handleRegenerateReply(review.review_id, review.star_rating <= 2 ? '150文字以内の非常に簡潔なお詫び文にまとめてください。' : '150文字以内の非常に簡潔なお礼文にまとめてください。')}
                                 disabled={isLoading}
                                 className="bg-white hover:bg-indigo-50 border border-slate-200 text-slate-700 text-[10px] font-bold py-1 px-2.5 rounded-lg transition-all active:scale-[0.97] flex items-center gap-1"
                               >
@@ -1820,18 +1835,18 @@ export default function App() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleRegenerateReply(review.review_id, 'お客様への真摯な謝罪に加え、今後の技術指導や接客カウンセリング教育を早急に徹底する改善姿勢を強調してください。')}
+                                onClick={() => handleRegenerateReply(review.review_id, review.star_rating <= 2 ? 'お客様への真摯な謝罪に加え、今後の技術指導や接客カウンセリング教育を早急に徹底する改善姿勢を強調してください。' : '店舗のアピールポイント、温かい感謝、そして定期的なメンテナンスのご案内をアピールして書き直してください。')}
                                 disabled={isLoading}
                                 className="bg-white hover:bg-indigo-50 border border-slate-200 text-slate-700 text-[10px] font-bold py-1 px-2.5 rounded-lg transition-all active:scale-[0.97] flex items-center gap-1"
                               >
-                                🔧 改善アピール
+                                🔧 改善・魅力アピール
                               </button>
                             </div>
                             <div className="flex items-center gap-1.5 mt-0.5">
                               <input
                                 type="text"
                                 id={`custom-directive-${review.review_id}`}
-                                placeholder="例: もっと親しみやすく、技術面についてお詫びして"
+                                placeholder={review.star_rating <= 2 ? '例: もっと親しみやすく、技術面についてお詫びして' : '例: メニューの強みをもっと前面に出して明るくお礼して'}
                                 className="flex-1 border border-slate-200 rounded-lg px-2.5 py-1.5 text-[10px] font-bold bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') {
@@ -1863,14 +1878,16 @@ export default function App() {
                             type="button"
                             onClick={() => handleSendApology(review.review_id)}
                             disabled={isLoading}
-                            className="w-full bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs py-3 px-4 rounded-xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 no-print"
+                            className={`w-full text-white font-extrabold text-xs py-3 px-4 rounded-xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 no-print ${
+                              review.star_rating <= 2 ? 'bg-rose-600 hover:bg-rose-700' : 'bg-indigo-600 hover:bg-indigo-700'
+                            }`}
                           >
                             {isLoading ? (
                               <RefreshCw className="w-4.5 h-4.5 animate-spin" />
                             ) : (
                               <>
                                 <Send className="w-4 h-4" />
-                                お詫び文を承認して送信する
+                                {review.star_rating <= 2 ? 'お詫び文を承認して送信する' : '返信文を承認して送信する'}
                               </>
                             )}
                           </button>

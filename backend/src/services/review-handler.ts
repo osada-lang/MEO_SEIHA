@@ -57,34 +57,59 @@ export class ReviewHandlerService {
   /**
    * 新着の口コミをハンドリングし、星の数に応じて自動返信またはAI下書き生成＆LINE通知を実行します。
    */
-  public async handleNewReview(review: ReviewEvent, storeName: string, customPrompt?: string): Promise<ReviewResponseResult> {
+  public async handleNewReview(
+    review: ReviewEvent, 
+    storeName: string, 
+    customPrompt?: string,
+    replyActive: boolean = false
+  ): Promise<ReviewResponseResult> {
     console.log(`\n📬 [新着口コミ検知] 店舗: 「${storeName}」 | 投稿者: ${review.reviewerName} | 星数: ★${review.starRating}`);
     console.log(`💬 コメント: "${review.comment || '(本文なし)'}"`);
-
-    // --- 星3〜5（中・高評価）: ランダム定型文で即座に自動返信 ---
-    if (review.starRating >= 3) {
-      const randomIndex = Math.floor(Math.random() * ReviewHandlerService.staticTemplates.length);
-      const replyText = ReviewHandlerService.staticTemplates[randomIndex];
-
-      console.log(`🟢 星${review.starRating}判定: 事前登録済みの定型文[${randomIndex}]を自動選択しました（AIコスト0円）。`);
-      console.log(`🤖 返信内容: "${replyText}"`);
-
-      return {
-        reviewId: review.reviewId,
-        isAutoReplied: true,
-        replyText,
-        requiresAlert: false,
-        escalationTriggered: false,
-        reason: '高評価（★3〜5）のため、テンプレートから自動返信を即座に行いました。'
-      };
-    }
-
-    // --- 星1〜2（低評価）: 自動返信は行わず、Geminiで謝罪文下書きを作成しLINEアラート送信 ---
-    console.log(`⚠️ 星${review.starRating}判定（低評価）: 即時自動返信を「保留」にし、AI謝罪文下書きの生成を開始します。`);
 
     if (!this.genAI) {
       throw new Error('❌ Gemini API is not initialized. Check GEMINI_API_KEY in .env');
     }
+
+    // --- 星3〜5（中・高評価）: AIで魅力的な感謝・アピール返信文を作成 ---
+    if (review.starRating >= 3) {
+      console.log(`🟢 星${review.starRating}判定（高・中評価）: AI返信下書きの生成を開始します。`);
+      const aiDraft = await this.generatePositiveDraft(review, storeName, customPrompt);
+      console.log(`🤖 AI高評価返信下書き作成成功:\n------------------\n${aiDraft}\n------------------`);
+
+      if (replyActive) {
+        // 全自動モード (1時間後に自動投稿するため、LINE通知はせず、サイレントで保存)
+        console.log('⚡ 自動返信「ON」判定：1時間後にバックグラウンドで全自動送信されます。（LINE通知はサイレント）');
+        return {
+          reviewId: review.reviewId,
+          isAutoReplied: false, // 1時間後に自動投稿されるので、一旦 false で保存
+          replyText: aiDraft,
+          requiresAlert: false, // サイレントのため false
+          escalationTriggered: false,
+          reason: '自動返信が「ON」のため、1時間後にバックグラウンドで自動投稿されます。店主様のLINE通知はサイレントにいたしました。'
+        };
+      } else {
+        // 承認モード (LINEでオーナーへ承認依頼を送信)
+        console.log('� 自動返信「OFF」判定：店主様のLINEにAI返信下書きの承認通知を送信します。');
+        const userId = process.env.LINE_USER_ID;
+        if (this.lineClient && userId) {
+          await this.sendLineAlert(userId, storeName, review, aiDraft, 'highRating');
+        } else {
+          console.log('ℹ️ LINE_USER_IDが未設定、またはLINEクライアントが未初期化のため、LINE承認通知をスキップしました。');
+        }
+
+        return {
+          reviewId: review.reviewId,
+          isAutoReplied: false,
+          replyText: aiDraft,
+          requiresAlert: true,
+          escalationTriggered: false,
+          reason: '自動返信が「OFF」のため、AI返信下書きを作成し、店主様へLINE承認通知を送信しました。'
+        };
+      }
+    }
+
+    // --- 星1〜2（低評価）: 自動返信は行わず、Geminiで謝罪文下書きを作成しLINEアラート送信 ---
+    console.log(`⚠️ 星${review.starRating}判定（低評価）: 即時自動返信を「保留」にし、AI謝罪文下書きの生成を開始します。`);
 
     // 1. Geminiを使って不満に寄り添う丁寧な謝罪下書き文を自動生成
     const aiDraft = await this.generateApologyDraft(review, storeName, customPrompt);
@@ -93,7 +118,7 @@ export class ReviewHandlerService {
     // 2. 店舗オーナーのLINEへ緊急プッシュアラートを送信
     const userId = process.env.LINE_USER_ID;
     if (this.lineClient && userId) {
-      await this.sendLineAlert(userId, storeName, review, aiDraft);
+      await this.sendLineAlert(userId, storeName, review, aiDraft, 'apology');
     } else {
       console.log('ℹ️ LINE_USER_IDが未設定、またはLINEクライアントが未初期化のため、LINEアラート送信をスキップしました（ログのみ出力）。');
     }
@@ -109,6 +134,45 @@ export class ReviewHandlerService {
       escalationTriggered: true,
       reason: `低評価（★${review.starRating}）を検知。AI謝罪文の下書き作成、および店舗オーナーへの緊急LINE通知、メールバックアップ、放置アラート監視（12h）をセットしました。`
     };
+  }
+
+  /**
+   * Geminiを使用して、高評価に対する感謝とアピールを兼ねた魅力的な返信文を自動生成します
+   */
+  private async generatePositiveDraft(review: ReviewEvent, storeName: string, customPrompt?: string): Promise<string> {
+    const model = this.genAI!.getGenerativeModel({ model: 'gemini-3.6-flash' });
+
+    const prompt = `
+      あなたは店舗「${storeName}」のオーナー代理として、お客様から届いたGoogleマップ上の高評価口コミ（★${review.starRating}）に対して、返信用のお礼メッセージ下書きを作成してください。
+
+      【お客様からの口コミ内容】
+      「${review.comment || '本文なし・高評価評価のみ'}」
+
+      【お礼文の生成ルール（厳守事項）】
+      1. 心からの感謝: まずご来店いただいたこと、および高評価（星${review.starRating}）に対する喜びと深い感謝をオーナーとして誠実に伝えてください。
+      2. コメント本文がある場合の対応（自然な共感と魅力の調和）:
+         お客様の口コミに具体的なコメント本文がある場合は、褒められた内容（接客、施術、空間、技術など）に対して自然に反応し共感してください。
+      3. コメント本文がない場合の対応（誠実な短文・宣伝禁止）:
+         星評価のみの場合は、ご評価いただいたことに対するシンプルな感謝の言葉と、次回ご来店の際にもよりご満足いただけるよう努める旨の丁寧な姿勢を述べて完結させてください。強引な売込や不自然なキーワードは含めないでください。
+      4. キーワードの不自然な多用禁止:
+         文脈に全く合わない過度なSEOキーワードの詰め込みは禁止します。あくまでも自然な文章のなかで、店舗のこだわりや魅力を調和させて表現してください。
+      5. 絵文字・記号の適度な使用:
+         謝罪文とは異なり、明るく親しみやすい丁寧なトーンを表現するために、適度に絵文字や感嘆符（「！」）などの記号をご使用いただけます。
+      6. 文字数制限: 文字数は200文字以内に収めてください。
+      7. 署名情報の排除:
+         最後に署名や店名は入れず、お礼本文のみを作成してください。
+
+      ${customPrompt ? `【店舗別の個別返信指示】\n${customPrompt}\n上記の店舗個別指示（店舗のウリ、アピールポイントなど）がある場合、お客様への感謝を第一にしたうえで、自然に織り交ぜて訴求してください。` : ''}
+    `;
+
+    try {
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return response.text().trim();
+    } catch (error: any) {
+      console.error('❌ Failed to generate positive draft with Gemini:', error);
+      return 'この度は温かい評価と口コミのご投稿、誠にありがとうございます！お客様からのお褒めの言葉が、スタッフ一同大変励みになります。これからもより一層喜んでいただけるようサービス向上に努めてまいります。またのご来店を心よりお待ちしております！';
+    }
   }
 
   /**
@@ -131,7 +195,7 @@ export class ReviewHandlerService {
          お客様からの口コミにコメント本文がなく、星評価のみの場合は、不快な思いをさせたことに対する真摯な謝罪と重い受け止めの言葉のみで文章を完結させてください。連絡先への案内、再来店への強引な誘導、サービスのアピール、地名や店舗のアピールなどの宣伝行為は【絶対に】含めないでください。
       4. 定型文の丸写し排除:
          毎回同じような定型文の丸写しにはせず、言い回しやニュアンス、お詫びの構成を毎回少しずつ変えて個別の文章として作成してください。
-      5. 感嘆符・絵文字・装飾の完全禁止:
+      5. 感嘆符・絵文字・装飾 of any kind の完全禁止:
          感嘆符（「！」）や疑問符（「？」）などの記号、および絵文字、マークダウン、特殊文字は、お詫びの場にふさわしくないため【一切使用しないでください】。すべて丁寧な日本語の句読点（「。」「、」）のみで文章を構成してください。
       6. 文字数制限: 文字数は200文字以内に収めてください。
       7. 署名情報の排除:
@@ -165,31 +229,26 @@ export class ReviewHandlerService {
 
     const model = this.genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
 
+    const isLowRating = review.starRating <= 2;
+
     const prompt = `
-      あなたは店舗「${storeName}」のオーナー代理として、お客様から届いたGoogleマップ上の低評価口コミ（★${review.starRating}）に対して、返信用のお詫びメッセージ下書きを作成・書き直してください。
+      あなたは店舗「${storeName}」のオーナー代理として、お客様から届いたGoogleマップ上の口コミ（★${review.starRating}）に対して、返信用のお礼・お詫びメッセージ下書きを作成・書き直してください。
 
       【お客様からの口コミ内容】
-      「${review.comment || '本文なし・低評価評価のみ'}」
+      「${review.comment || '本文なし・評価のみ'}」
 
-      【お詫び文の生成ルール（厳守事項）】
-      1. 真摯な謝罪: まず不快な思いをさせてしまったことを、オーナーとして深く、真摯にお詫びしてください。
-      2. コメント本文がある場合の対応（自然な反応・余計なKWの強要禁止）:
-         お客様の口コミに具体的なコメント本文がある場合は、その具体的な不満や内容に自然に反応してください。相手が書いた不満点や言葉に真摯に寄り添い共感して受け止めてください。ただし、相手が口コミの中で触れていない余計なサービスキーワード、店舗のこだわり、強みを無理やり・強引に入れ込まないでください。
-      3. コメント本文がない場合の対応（謝罪完結・宣伝禁止）:
-         お客様からの口コミにコメント本文がなく、星評価のみの場合は、不快な思いをさせたことに対する真摯な謝罪と重い受け止めの言葉のみで文章を完結させてください。連絡先への案内、再来店への強引な誘導、サービスのアピール、地名や店舗のアピールなどの宣伝行為は【絶対に】含めないでください。
-      4. 定型文の丸写し排除:
-         毎回同じような定型文の丸写しにはせず、言い回しやニュアンス、お詫びの構成を毎回少しずつ変えて個別の文章として作成してください。
-      5. 感嘆符・絵文字・装飾の完全禁止:
-         感嘆符（「！」）や疑問符（「？」）などの記号、および絵文字、マークダウン、特殊文字は、お詫びの場にふさわしくないため【一切使用しないでください】。すべて丁寧な日本語の句読点（「。」「、」）のみで文章を構成してください。
-      6. 文字数制限: 文字数は200文字以内に収めてください。
-      7. 署名情報の排除:
-         最後に署名や店名は入れず、お詫び本文のみを作成してください。
+      【基本生成ルール】
+      1. ${isLowRating ? '真摯な謝罪：不快な思いをさせてしまったことをオーナーとして真摯にお詫びしてください。' : '誠実な感謝：高評価をいただいたことに対する喜びと感謝を誠実に伝えてください。'}
+      2. 具体的な口コミコメント（褒め言葉・指摘点）があれば、それに自然に反応し、寄り添った返信にしてください。
+      3. ${isLowRating ? '感嘆符・絵文字・装飾は【一切完全禁止】です。すべて丁寧な句読点（「。」「、」）のみにしてください。' : '感謝の雰囲気を明るくお伝えするため、適度に「！」や絵文字を使っても構いません。'}
+      4. 文字数は200文字以内に収めてください。
+      5. 署名情報や署名の名前は含めず、本文のみを作成してください。
 
-      ${customPrompt ? `【店舗別の個別お詫び・返信指示】\n${customPrompt}` : ''}
+      ${customPrompt ? `【店舗別の個別指示】\n${customPrompt}` : ''}
 
       【今回の店主からの「書き直し（再生成）」追加指示・トーン指定】
-      ★必ず以下の指示に従い、お詫び文を全面的に調整・書き直してください：
-      「${directive || '丁寧かつ真摯なトーンで作成してください。'}」
+      ★必ず以下の追加指示に従って、文章を全面的に修正・書き直してください：
+      「${directive || '丁寧な日本語で、指示通りに作成してください。'}」
     `;
 
     try {
@@ -198,20 +257,24 @@ export class ReviewHandlerService {
       return response.text().trim();
     } catch (error: any) {
       console.error('❌ Failed to regenerate apology draft with Gemini:', error);
-      return 'この度は当店のご利用に際し、ご満足のいくサービスを提供できず、不快な思いをさせてしまいましたことを深くお詫び申し上げます。今後、このようなことがないようスタッフへの指導とサービスの改善に努めてまいります。';
+      return isLowRating
+        ? 'この度は当店のご利用に際し、ご満足のいくサービスを提供できず、不快な思いをさせてしまいましたことを深くお詫び申し上げます。今後、このようなことがないようスタッフへの指導とサービスの改善に努めてまいります。'
+        : 'この度はご来店いただき、また素晴らしい評価をありがとうございます。これからも愛されるお店を目指して努力してまいります。またのお越しをお待ちしております！';
     }
   }
 
   /**
    * 店舗オーナー宛てに、マジックリンクと下書き文付きの緊急LINEアラートをプッシュ送信します
    */
-  private async sendLineAlert(userId: string, storeName: string, review: ReviewEvent, aiDraft: string): Promise<void> {
+  private async sendLineAlert(userId: string, storeName: string, review: ReviewEvent, aiDraft: string, type: 'apology' | 'highRating'): Promise<void> {
     if (!this.lineClient) return;
 
     // 店舗ごとに個別の確認・編集画面へジャンプする一時トークン（マジックリンク）の生成を模擬
-    const magicLink = `http://localhost:3000/api/auth/magic-login?token=temp-mock-token-for-${review.reviewId}`;
+    const magicLink = `https://meo-seiha-dev.vercel.app/api/auth/magic-login?token=temp-mock-token-for-${review.reviewId}`;
 
-    const messageText = `🔔【低評価口コミの緊急検知アラート】
+    let messageText = '';
+    if (type === 'apology') {
+      messageText = `🔔【低評価口コミの緊急検知アラート】
 
 「${storeName}」に★${review.starRating}の低評価口コミが投稿されました。お客様の不満を和らげるため、24時間以内の返信を推奨します。
 
@@ -228,8 +291,27 @@ ${aiDraft}
 ━━━━━━━━━━━━━━━━
 パスワードなしで管理画面に直行し、送信できるマジックリンクはこちら：
 ${magicLink}`;
+    } else {
+      messageText = `✨【高評価口コミの受信・返信承認のお願い】
 
-    console.log(`✉️ Sending LINE alert to Owner [ID: ${userId}]...`);
+「${storeName}」に★${review.starRating}の嬉しい口コミが届きました！承認をいただくことで、AIが作成した以下の返信文を投稿します。
+
+👤 投稿者: ${review.reviewerName}様
+💬 本文: "${review.comment || 'コメントなし'}"
+
+━━━━━━━━━━━━━━━━
+🤖 AIが自動作成した「お礼・返信文下書き」
+━━━━━━━━━━━━━━━━
+${aiDraft}
+
+━━━━━━━━━━━━━━━━
+👇 このまま送信、または編集して送信
+━━━━━━━━━━━━━━━━
+パスワードなしで管理画面に直行し、送信できるマジックリンクはこちら：
+${magicLink}`;
+    }
+
+    console.log(`✉️ Sending LINE alert (${type}) to Owner [ID: ${userId}]...`);
     try {
       await this.lineClient.pushMessage(userId, {
         type: 'text',

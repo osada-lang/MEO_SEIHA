@@ -171,16 +171,21 @@ app.get('/api/shops/:shopId/dashboard', async (req, res) => {
 
     // Determine photo stock count
     let imageCount = mockDriveFiles.length;
+    let firstFileId = mockDriveFiles.length > 0 ? mockDriveFiles[0].id : null;
     const auth = getGoogleAuthClient();
     if (auth) {
       try {
         const drive = google.drive({ version: 'v3', auth });
         const driveRes = await drive.files.list({
-          q: `parents in '${shop.google_drive_folder_id || 'root'}' and (mimeType = 'image/jpeg' or mimeType = 'image/png')`,
+          q: `parents in '${shop.google_drive_folder_id || 'root'}' and (mimeType = 'image/jpeg' or mimeType = 'image/png') and trashed = false`,
           fields: 'files(id)',
+          pageSize: 30,
         });
         if (driveRes.data.files) {
           imageCount = driveRes.data.files.length;
+          if (driveRes.data.files.length > 0) {
+            firstFileId = driveRes.data.files[0].id || null;
+          }
         }
       } catch (e) {
         console.log('⚠️ Failed to fetch live Drive images for dashboard, using fallback count.');
@@ -249,8 +254,10 @@ app.get('/api/shops/:shopId/dashboard', async (req, res) => {
       }
     }
 
-    // Dummy preview image (use the first mock file or some sample image)
-    const previewImage = imageCount > 0 ? '/assets/mock-preview.jpg' : null;
+    // Dynamic preview image pointing to our proxy stream endpoint!
+    const previewImage = firstFileId
+      ? `/api/shops/${shopId}/drive-images/${firstFileId}/view`
+      : null;
 
     return res.json({
       shopName: shop.name,
@@ -259,7 +266,7 @@ app.get('/api/shops/:shopId/dashboard', async (req, res) => {
       postingMode,
       postingModeLabel,
       pendingReviewsCount,
-      nextPostTime: `本日 ${shop.keywords?.post_time_hour ?? 12}:00 予定`,
+      nextPostTime: `本日 ${(shop.keywords as any)?.post_time_hour ?? 12}:00 予定`,
       previewImage,
       googleLocationId: shop.google_location_id,
       draftPosts: draftPostsArr,
@@ -327,7 +334,7 @@ app.get('/api/shops/:shopId/settings', async (req, res) => {
         hotpepperUrl: shop.keywords?.hotpepper_url || '',
         gurunaviUrl: shop.keywords?.gurunavi_url || '',
         gbpActionUrl: shop.keywords?.gbp_action_url || '',
-        postTimeHour: shop.keywords?.post_time_hour ?? 12,
+        postTimeHour: (shop.keywords as any)?.post_time_hour ?? 12,
       },
       templates: {
         star3: star3Templates,
@@ -465,6 +472,56 @@ app.get('/api/shops/:shopId/drive-images', async (req, res) => {
     console.error('❌ Failed to fetch Google Drive files:', error.message || error);
     // Graceful fallback to mock images so client never crashes
     return res.json({ files: mockDriveFiles, isMock: true, error: 'Google Drive接続エラーのため、モック画像を表示しています。' });
+  }
+});
+
+// GET /api/shops/:shopId/drive-images/:fileId/view
+app.get('/api/shops/:shopId/drive-images/:fileId/view', async (req, res) => {
+  const { shopId, fileId } = req.params;
+
+  try {
+    // If it's a mock file, return its data or a beautiful placeholder
+    if (fileId.startsWith('mock-img-')) {
+      const mockFile = mockDriveFiles.find(f => f.id === fileId);
+      if (mockFile && mockFile.dataUrl) {
+        const base64Content = mockFile.dataUrl.split(',')[1];
+        const buffer = Buffer.from(base64Content, 'base64');
+        res.setHeader('Content-Type', mockFile.mimeType);
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        return res.send(buffer);
+      }
+      // Fallback to a high-quality stock photo if no dataUrl
+      return res.redirect('https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=600');
+    }
+
+    const auth = getGoogleAuthClient();
+    if (!auth) {
+      console.log('⚠️ Google Auth not set up. Redirecting to default unsplash picture.');
+      return res.redirect('https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=600');
+    }
+
+    const drive = google.drive({ version: 'v3', auth });
+
+    // 1. Fetch metadata first to get exact mimeType
+    const metadata = await drive.files.get({
+      fileId,
+      fields: 'mimeType',
+    });
+
+    res.setHeader('Content-Type', metadata.data.mimeType || 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
+
+    // 2. Fetch the actual media content stream and pipe directly to Express response
+    const fileRes = await drive.files.get({
+      fileId,
+      alt: 'media',
+    }, { responseType: 'stream' });
+
+    fileRes.data.pipe(res);
+  } catch (error: any) {
+    console.error(`❌ Failed to stream Google Drive image ${fileId}:`, error.message || error);
+    // Graceful redirect so the client UI never shows broken image icons
+    return res.redirect('https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=600');
   }
 });
 
@@ -1099,7 +1156,7 @@ async function runBackgroundScheduler() {
     for (const shop of shops) {
       // 1. Check for Daily Automated Posting
       if (shop.keywords) {
-        const postTimeHour = shop.keywords.post_time_hour ?? 12; // Default is 12 (Noon)
+        const postTimeHour = (shop.keywords as any).post_time_hour ?? 12; // Default is 12 (Noon)
 
         // If current hour matches the store's configured posting hour
         if (currentHour === postTimeHour) {
@@ -1155,7 +1212,7 @@ async function runBackgroundScheduler() {
             if (!existing) {
               console.log(`🆕 Detected brand NEW review from Google for "${shop.name}": Rating=${starRating} | Reviewer="${reviewerName}"`);
 
-              // Handle new review using ReviewHandlerService
+              // Handle new review using ReviewHandlerService (pass shop.reply_active)
               const handleResult = await reviewHandler.handleNewReview(
                 {
                   reviewId,
@@ -1165,37 +1222,16 @@ async function runBackgroundScheduler() {
                   createTime
                 },
                 shop.name,
-                shop.custom_review_prompt || undefined
+                shop.custom_review_prompt || undefined,
+                shop.reply_active
               );
 
-              // Check if auto-reply toggle is active
+              // All new reviews are saved initially as draft (is_auto_replied = false)
+              // Low-star reviews await owner's manual approval
+              // High-star reviews:
+              // - If reply_active is OFF: await owner's manual approval
+              // - If reply_active is ON: await the 1-hour delay in the auto-posting scheduler
               let finalReplyText = handleResult.replyText;
-              let isAutoReplied = false;
-
-              // If shop has reply_active enabled, we can automatically reply to Google
-              if (shop.reply_active) {
-                // If High Rating (3-5 stars), we automatically post the reply back to Google My Business API!
-                if (starRating >= 3) {
-                  console.log(`🤖 Auto-replying to high-rating review ${reviewId} with template...`);
-                  try {
-                    // Post reply to Google Business Profile API
-                    await oauth2Client.request({
-                      url: `https://mybusiness.googleapis.com/v4/${reviewId}/reply`,
-                      method: 'PUT',
-                      data: {
-                        comment: finalReplyText
-                      }
-                    });
-                    isAutoReplied = true;
-                    console.log(`✅ Successfully published auto-reply to Google for review ${reviewId}`);
-                  } catch (replyGmbErr: any) {
-                    console.error(`⚠️ Failed to publish auto-reply to Google for review ${reviewId}:`, replyGmbErr.message || replyGmbErr);
-                  }
-                } else {
-                  // Low Rating (1-2 stars) - Leave it as a draft for store owner's manual approval (with LINE alert already triggered)
-                  console.log(`⚠️ Low-rating review ${reviewId} requires manual review & approval. Apology draft created & LINE alert sent.`);
-                }
-              }
 
               // Save the review to our local database
               await prisma.reviewLogs.create({
@@ -1206,14 +1242,63 @@ async function runBackgroundScheduler() {
                   star_rating: starRating,
                   comment,
                   reply_text: finalReplyText,
-                  is_auto_replied: isAutoReplied,
-                  create_time: createTime,
+                  is_auto_replied: false,
+                  create_time: new Date(createTime), // Robust Date parsing
                 }
               });
             }
           }
         } catch (scErr: any) {
           console.error(`❌ Background review fetch failed for "${shop.name}":`, scErr.message || scErr);
+        }
+      }
+
+      // 3. Process Delayed Auto-Replies (ON status, star >= 3, is_auto_replied === false, 1-hour elapsed)
+      if (googleAuthAvailable && shop.google_location_id && shop.google_location_id.startsWith('accounts/') && shop.reply_active) {
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000); // 1 hour ago
+        try {
+          const pendingAutoReviews = await prisma.reviewLogs.findMany({
+            where: {
+              shop_id: shop.id,
+              star_rating: { gte: 3 },
+              is_auto_replied: false,
+              reply_text: { not: null },
+              create_time: { lte: oneHourAgo }
+            }
+          });
+
+          if (pendingAutoReviews.length > 0) {
+            console.log(`🤖 [自動返信スケジューラー] 店舗: 「${shop.name}」に対して 1時間経過した全自動返信対象の口コミが ${pendingAutoReviews.length}件 検出されました。自動送信を開始します。`);
+            const oauth2Client = new google.auth.OAuth2(clientID, clientSecret, 'http://localhost');
+            oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+            for (const pRev of pendingAutoReviews) {
+              if (pRev.reply_text) {
+                console.log(`📡 [自動送信実行] 口コミ: ${pRev.review_id} | 投稿者: ${pRev.reviewer_name} | 返信内容: "${pRev.reply_text}"`);
+                try {
+                  // Post to Google GMB API
+                  await oauth2Client.request({
+                    url: `https://mybusiness.googleapis.com/v4/${pRev.review_id}/reply`,
+                    method: 'PUT',
+                    data: {
+                      comment: pRev.reply_text
+                    }
+                  });
+
+                  // Mark as replied in database
+                  await prisma.reviewLogs.update({
+                    where: { id: pRev.id },
+                    data: { is_auto_replied: true }
+                  });
+                  console.log(`✅ [自動送信成功] 口コミ: ${pRev.review_id} への返信投稿を完了しました。`);
+                } catch (gmbErr: any) {
+                  console.error(`❌ [自動送信失敗] 口コミ: ${pRev.review_id} への返信投稿に失敗しました:`, gmbErr.message || gmbErr);
+                }
+              }
+            }
+          }
+        } catch (delayErr: any) {
+          console.error(`❌ [自動返信スケジューラーエラー] 店舗: 「${shop.name}」の遅延返信処理でエラーが発生しました:`, delayErr.message || delayErr);
         }
       }
     }
