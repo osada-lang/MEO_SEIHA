@@ -7,11 +7,13 @@ async function main() {
 
   const shopId = 'thanx-create-uuid';
 
-  // 1. Update Shop general fields (custom_review_prompt, reply_active)
+  // 1. Update Shop general fields (custom_review_prompt, reply_active, google_drive_folder_id, google_location_id)
   await prisma.shop.update({
     where: { id: shopId },
     data: {
       reply_active: true,
+      google_drive_folder_id: '1AIgemm9-fvP-eLwP7p2p8Plja1mbOJtX',
+      google_location_id: 'locations/3018418038085555463',
       custom_review_prompt: '合同会社THANX CREATEのカスタマーサポートとして、極めて真摯にお詫びしてください。店舗様の売上向上に本気で伴走する企業として、サービス改善へ向けて早急に対応する熱い誠意を伝えてください。',
     },
   });
