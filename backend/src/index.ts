@@ -1124,17 +1124,28 @@ async function executeDailyPostRollover(shopId: string) {
   const clientID = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
-  const locationId = shop.google_location_id || (shop.keywords && shop.keywords.gbp_action_url);
+  const locationIdInput = shop.google_location_id || (shop.keywords && shop.keywords.gbp_action_url);
 
-  if (clientID && clientSecret && refreshToken && locationId && locationId.startsWith('accounts/')) {
-    console.log(`📡 Attempting real GBP post creation for location: ${locationId}`);
+  let resolvedPath: string | null = null;
+  if (clientID && clientSecret && refreshToken && locationIdInput) {
+    try {
+      const oauth2Client = new google.auth.OAuth2(clientID, clientSecret, 'http://localhost');
+      oauth2Client.setCredentials({ refresh_token: refreshToken });
+      resolvedPath = await resolveGoogleLocationPath(oauth2Client, locationIdInput);
+    } catch (resolveErr: any) {
+      console.error('⚠️ Failed to resolve location path for rollover:', resolveErr.message || resolveErr);
+    }
+  }
+
+  if (resolvedPath) {
+    console.log(`📡 Attempting real GBP post creation for location: ${resolvedPath}`);
     try {
       const oauth2Client = new google.auth.OAuth2(clientID, clientSecret, 'http://localhost');
       oauth2Client.setCredentials({ refresh_token: refreshToken });
       
       // Post to GMB v4 LocalPosts API
       const response = await oauth2Client.request({
-        url: `https://mybusiness.googleapis.com/v4/${locationId}/localPosts`,
+        url: `https://mybusiness.googleapis.com/v4/${resolvedPath}/localPosts`,
         method: 'POST',
         data: {
           languageCode: 'ja-JP',
