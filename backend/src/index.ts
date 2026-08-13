@@ -232,25 +232,39 @@ app.get('/api/shops/:shopId/dashboard', async (req, res) => {
       
       // Auto-clean old dayIndex === -1 if calendar day in JST has changed!
       const publishedItem = draftPostsArr.find((d: any) => d.dayIndex === -1);
-      if (publishedItem && publishedItem.publishedAt) {
+      if (publishedItem) {
         try {
-          const jstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-          const todayDateStr = jstNow.getFullYear() + '-' + (jstNow.getMonth() + 1) + '-' + jstNow.getDate();
-
-          const jstPub = new Date(new Date(publishedItem.publishedAt).toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
-          const pubDateStr = jstPub.getFullYear() + '-' + (jstPub.getMonth() + 1) + '-' + jstPub.getDate();
-
-          if (todayDateStr !== pubDateStr) {
-            console.log(`🧹 Calendar day changed in JST! Removing previous day's posted draft (-1) from database.`);
+          if (!publishedItem.publishedAt) {
+            console.log(`🧹 Found legacy posted draft without publishedAt. Cleaning it up.`);
             draftPostsArr = draftPostsArr.filter((d: any) => d.dayIndex !== -1);
-            
-            // Save cleaned array to DB
             await prisma.shopKeywords.update({
               where: { shop_id: shopId },
               data: {
                 draft_posts: JSON.stringify(draftPostsArr)
               }
             });
+          } else {
+            const formatter = new Intl.DateTimeFormat('ja-JP', {
+              timeZone: 'Asia/Tokyo',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit'
+            });
+            const todayDateStr = formatter.format(new Date());
+            const pubDateStr = formatter.format(new Date(publishedItem.publishedAt));
+
+            if (todayDateStr !== pubDateStr) {
+              console.log(`🧹 Calendar day changed in JST! Removing previous day's posted draft (-1) from database. (Today: ${todayDateStr}, Published: ${pubDateStr})`);
+              draftPostsArr = draftPostsArr.filter((d: any) => d.dayIndex !== -1);
+              
+              // Save cleaned array to DB
+              await prisma.shopKeywords.update({
+                where: { shop_id: shopId },
+                data: {
+                  draft_posts: JSON.stringify(draftPostsArr)
+                }
+              });
+            }
           }
         } catch (cleanErr: any) {
           console.error('⚠️ Failed to clean up previous day posted draft:', cleanErr.message || cleanErr);
