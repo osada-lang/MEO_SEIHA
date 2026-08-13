@@ -32,7 +32,6 @@ async function main() {
       hotpepper_url: null,
       gurunavi_url: null,
       gbp_action_url: null,
-      draft_posts: null,
     },
     create: {
       shop_id: shopId,
