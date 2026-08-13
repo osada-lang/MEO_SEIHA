@@ -1143,6 +1143,34 @@ app.post('/api/shops/:shopId/draft-posts/regenerate', async (req, res) => {
   }
 });
 
+// POST /api/shops/:shopId/draft-posts/clear-published
+// Manual cleanup route to clear "本日投稿済み" (-1) draft for testing
+app.post('/api/shops/:shopId/draft-posts/clear-published', async (req, res) => {
+  const { shopId } = req.params;
+  try {
+    const shopKeywords = await prisma.shopKeywords.findUnique({
+      where: { shop_id: shopId }
+    });
+
+    if (shopKeywords && shopKeywords.draft_posts) {
+      let draftPostsArr = JSON.parse(shopKeywords.draft_posts);
+      draftPostsArr = draftPostsArr.filter((d: any) => d.dayIndex !== -1);
+
+      await prisma.shopKeywords.update({
+        where: { shop_id: shopId },
+        data: {
+          draft_posts: JSON.stringify(draftPostsArr)
+        }
+      });
+      return res.json({ success: true, drafts: draftPostsArr });
+    }
+    return res.json({ success: true, drafts: [] });
+  } catch (error: any) {
+    console.error('❌ Clear published drafts error:', error);
+    return res.status(500).json({ error: error.message || '投稿済み下書きの削除に失敗しました。' });
+  }
+});
+
 // Helper to run daily post publication and draft sliding / generation
 async function executeDailyPostRollover(shopId: string) {
   const shop = await prisma.shop.findUnique({

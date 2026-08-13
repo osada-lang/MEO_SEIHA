@@ -343,6 +343,34 @@ export default function App() {
     }
   };
 
+  // Clear "本日投稿済み" (-1) draft for testing
+  const handleClearPublished = async () => {
+    if (!currentShop || !dashboard || isToggling) return;
+    if (!confirm('「本日投稿済み」カードを強制リセットして、今日最初の自動投稿テスト（Day 0の公開）を行えるようにしますか？')) return;
+    setIsToggling(true);
+
+    try {
+      const res = await fetch(`${API_BASE}/shops/${currentShop.id}/draft-posts/clear-published`, {
+        method: 'POST',
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setDashboard({
+          ...dashboard,
+          draftPosts: data.drafts,
+        });
+        showBanner('success', '🟢 「本日投稿済み」カードを強制リセットし、3日間の予定表示に戻しました！');
+      } else {
+        showBanner('error', data.error || 'リセットに失敗しました。');
+      }
+    } catch (err) {
+      showBanner('error', 'サーバーとの通信に失敗しました。');
+    } finally {
+      setIsToggling(false);
+    }
+  };
+
   // Save Settings forms (Keywords, templates, prompts)
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1197,6 +1225,24 @@ export default function App() {
                           </>
                         )}
                       </button>
+
+                      {dashboard.draftPosts.some((d: any) => d.dayIndex === -1) && (
+                        <button
+                          type="button"
+                          disabled={isToggling}
+                          onClick={handleClearPublished}
+                          className="w-full bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-extrabold text-[10px] py-2 px-3 rounded-lg shadow-sm transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 mt-2"
+                        >
+                          {isToggling ? (
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <>
+                              <RefreshCw className="w-3 h-3" />
+                              「本日投稿済み」カードを強制リセット（JST日付変更をシミュレート） 🧹
+                            </>
+                          )}
+                        </button>
+                      )}
                     </div>
                   )}
             </div>
