@@ -302,10 +302,26 @@ app.get('/api/shops/:shopId/dashboard', async (req, res) => {
       }
     }
 
+    // Resolve draft posts with fallback images first
+    const resolvedDrafts = draftPostsArr.map((d: any, idx: number) => {
+      let imageFileId = d.imageFileId || null;
+      if (!imageFileId && postingMode !== 'TEXT_ONLY') {
+        imageFileId = driveFileIds[idx] || null;
+      }
+      return {
+        ...d,
+        imageFileId
+      };
+    });
+
+    // Find the image for today's scheduled post (dayIndex === 0)
+    const day0Draft = resolvedDrafts.find((d: any) => d.dayIndex === 0);
+    const day0ImageFileId = day0Draft ? day0Draft.imageFileId : null;
+
     // Dynamic preview image pointing to our proxy stream endpoint!
-    const previewImage = firstFileId
-      ? `/api/shops/${shopId}/drive-images/${firstFileId}/view`
-      : null;
+    const previewImage = day0ImageFileId
+      ? `/api/shops/${shopId}/drive-images/${day0ImageFileId}/view`
+      : (firstFileId ? `/api/shops/${shopId}/drive-images/${firstFileId}/view` : null);
 
     return res.json({
       shopName: shop.name,
@@ -317,16 +333,7 @@ app.get('/api/shops/:shopId/dashboard', async (req, res) => {
       nextPostTime: `本日 ${(shop.keywords as any)?.post_time_hour ?? 12}:00 予定`,
       previewImage,
       googleLocationId: shop.google_location_id,
-      draftPosts: draftPostsArr.map((d: any, idx: number) => {
-        let imageFileId = d.imageFileId || null;
-        if (!imageFileId && postingMode !== 'TEXT_ONLY') {
-          imageFileId = driveFileIds[idx] || null;
-        }
-        return {
-          ...d,
-          imageFileId
-        };
-      }),
+      draftPosts: resolvedDrafts,
     });
   } catch (error) {
     console.error('❌ Dashboard fetch error:', error);
