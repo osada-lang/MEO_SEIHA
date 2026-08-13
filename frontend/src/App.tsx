@@ -16,7 +16,6 @@ import {
   Sparkles,
   Send,
   Check,
-  BarChart3,
   Clock
 } from 'lucide-react';
 
@@ -57,6 +56,7 @@ interface DashboardData {
   nextPostTime: string;
   previewImage: string | null;
   googleLocationId: string | null;
+  gbpActionUrl: string | null;
   draftPosts: DraftPost[];
 }
 
@@ -854,32 +854,19 @@ export default function App() {
                   <h2 className="text-xl font-black text-slate-900 leading-tight mt-0.5">{dashboard.shopName}</h2>
                 </div>
 
-                {/* 📍 Quick Links Grid */}
-                <div className="grid grid-cols-2 gap-2.5 pt-2">
+                {/* 📍 Quick Links */}
+                <div className="pt-1.5">
                   <a
-                    href={`https://www.google.com/maps/search/?api=1&query=Google&query_place_id=${dashboard.googleLocationId || ''}`}
+                    href={dashboard.gbpActionUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dashboard.shopName)}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="bg-slate-50 hover:bg-indigo-50 border border-slate-200/80 hover:border-indigo-200 p-3 rounded-xl transition-all flex items-center justify-between text-left group"
+                    className="bg-slate-50 hover:bg-indigo-50 border border-slate-200/80 hover:border-indigo-200 p-3.5 rounded-xl transition-all flex items-center justify-between text-left group w-full"
                   >
                     <div>
                       <span className="text-[10px] font-black text-slate-400 group-hover:text-indigo-500 transition-colors uppercase block">Google Maps</span>
                       <span className="text-xs font-bold text-slate-800 block mt-0.5">店舗を確認</span>
                     </div>
                     <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
-                  </a>
-
-                  <a
-                    href={`https://business.google.com/performance/l/${dashboard.googleLocationId || ''}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="bg-slate-50 hover:bg-emerald-50 border border-slate-200/80 hover:border-emerald-200 p-3 rounded-xl transition-all flex items-center justify-between text-left group"
-                  >
-                    <div>
-                      <span className="text-[10px] font-black text-slate-400 group-hover:text-emerald-600 transition-colors uppercase block">GBPパフォーマンス</span>
-                      <span className="text-xs font-bold text-slate-800 block mt-0.5">アクション数確認</span>
-                    </div>
-                    <BarChart3 className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 transition-colors" />
                   </a>
                 </div>
               </div>

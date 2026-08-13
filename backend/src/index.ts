@@ -333,6 +333,7 @@ app.get('/api/shops/:shopId/dashboard', async (req, res) => {
       nextPostTime: `本日 ${(shop.keywords as any)?.post_time_hour ?? 12}:00 予定`,
       previewImage,
       googleLocationId: shop.google_location_id,
+      gbpActionUrl: shop.keywords?.gbp_action_url || null,
       draftPosts: resolvedDrafts,
     });
   } catch (error) {
