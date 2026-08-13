@@ -230,6 +230,33 @@ app.get('/api/shops/:shopId/dashboard', async (req, res) => {
         }
       }
       
+      // Auto-clean old dayIndex === -1 if calendar day in JST has changed!
+      const publishedItem = draftPostsArr.find((d: any) => d.dayIndex === -1);
+      if (publishedItem && publishedItem.publishedAt) {
+        try {
+          const jstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+          const todayDateStr = jstNow.getFullYear() + '-' + (jstNow.getMonth() + 1) + '-' + jstNow.getDate();
+
+          const jstPub = new Date(new Date(publishedItem.publishedAt).toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+          const pubDateStr = jstPub.getFullYear() + '-' + (jstPub.getMonth() + 1) + '-' + jstPub.getDate();
+
+          if (todayDateStr !== pubDateStr) {
+            console.log(`🧹 Calendar day changed in JST! Removing previous day's posted draft (-1) from database.`);
+            draftPostsArr = draftPostsArr.filter((d: any) => d.dayIndex !== -1);
+            
+            // Save cleaned array to DB
+            await prisma.shopKeywords.update({
+              where: { shop_id: shopId },
+              data: {
+                draft_posts: JSON.stringify(draftPostsArr)
+              }
+            });
+          }
+        } catch (cleanErr: any) {
+          console.error('⚠️ Failed to clean up previous day posted draft:', cleanErr.message || cleanErr);
+        }
+      }
+      
       // If empty, auto-generate 3-day drafts using Gemini AI
       if (draftPostsArr.length === 0) {
         console.log(`🤖 First-time auto-generating 3-day drafts for shop: ${shop.name}`);
@@ -1039,11 +1066,19 @@ app.post('/api/shops/:shopId/draft-posts/regenerate', async (req, res) => {
       const day1 = await generateSingleDraft(shop, 1, driveFilesList);
       const day2 = await generateSingleDraft(shop, 2, driveFilesList);
 
-      draftPostsArr = [
+      const nextDrafts = [
         { dayIndex: 0, title: '今日投稿予定の下書き (Day 0)', text: day0.text, subKeywords: day0.subKeywords, imageFileId: day0.imageFileId || null },
         { dayIndex: 1, title: '明日投稿予定の下書き (Day 1)', text: day1.text, subKeywords: day1.subKeywords, imageFileId: day1.imageFileId || null },
         { dayIndex: 2, title: '明後日投稿予定の下書き (Day 2)', text: day2.text, subKeywords: day2.subKeywords, imageFileId: day2.imageFileId || null },
       ];
+
+      // Keep dayIndex: -1 if it exists
+      const publishedItem = draftPostsArr.find((d: any) => d.dayIndex === -1);
+      if (publishedItem) {
+        draftPostsArr = [publishedItem, ...nextDrafts];
+      } else {
+        draftPostsArr = nextDrafts;
+      }
     } else {
       // Regenerate single day's draft
       const targetIndex = typeof dayIndex === 'number' ? dayIndex : 0;
@@ -1110,12 +1145,15 @@ async function executeDailyPostRollover(shopId: string) {
     }
   }
 
-  if (draftPostsArr.length === 0) {
+  // Filter out any existing -1 draft just in case
+  const cleanDrafts = draftPostsArr.filter((d: any) => d.dayIndex !== -1);
+
+  if (cleanDrafts.length === 0) {
     throw new Error('下書きが存在しないため、自動生成処理を実行できません。先にダッシュボードで初期下書きを作成してください。');
   }
 
   // 1. The post being published today (Day 0)
-  const publishedPost = draftPostsArr[0];
+  const publishedPost = cleanDrafts[0];
 
   // Perform actual posting to Google Business Profile API if location is set and token is set
   let gbpPublished = false;
@@ -1182,33 +1220,46 @@ async function executeDailyPostRollover(shopId: string) {
   }
 
   // 2. Perform the roll-over (Slide)
+  // Keep the published draft as dayIndex: -1 (本日投稿済み)
+  const nextDayMinus1 = {
+    dayIndex: -1,
+    title: '本日投稿済みの下書き',
+    text: publishedPost.text,
+    subKeywords: publishedPost.subKeywords,
+    imageFileId: publishedPost.imageFileId || null,
+    publishedAt: new Date().toISOString(),
+  };
+
+  const draft1 = cleanDrafts[1] || publishedPost;
+  const draft2 = cleanDrafts[2] || publishedPost;
+
   const nextDay0 = {
     dayIndex: 0,
-    title: '今日投稿予定の下書き (Day 0)',
-    text: draftPostsArr[1].text,
-    subKeywords: draftPostsArr[1].subKeywords,
-    imageFileId: draftPostsArr[1].imageFileId || null,
+    title: '明日投稿予定の下書き (Day 0)',
+    text: draft1.text,
+    subKeywords: draft1.subKeywords,
+    imageFileId: draft1.imageFileId || null,
   };
 
   const nextDay1 = {
     dayIndex: 1,
-    title: '明日投稿予定の下書き (Day 1)',
-    text: draftPostsArr[2].text,
-    subKeywords: draftPostsArr[2].subKeywords,
-    imageFileId: draftPostsArr[2].imageFileId || null,
+    title: '明後日投稿予定の下書き (Day 1)',
+    text: draft2.text,
+    subKeywords: draft2.subKeywords,
+    imageFileId: draft2.imageFileId || null,
   };
 
   // 3. Generate a brand new Day 2 draft using Gemini AI!
   const newDay2Raw = await generateSingleDraft(shop, 2, driveFilesList);
   const nextDay2 = {
     dayIndex: 2,
-    title: '明後日投稿予定の下書き (Day 2)',
+    title: '明々後日投稿予定の下書き (Day 2)',
     text: newDay2Raw.text,
     subKeywords: newDay2Raw.subKeywords,
     imageFileId: newDay2Raw.imageFileId || null,
   };
 
-  const newDrafts = [nextDay0, nextDay1, nextDay2];
+  const newDrafts = [nextDayMinus1, nextDay0, nextDay1, nextDay2];
 
   // Save back to database
   await prisma.shopKeywords.update({
