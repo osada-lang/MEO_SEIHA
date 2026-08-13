@@ -1026,6 +1026,10 @@ app.post('/api/shops/:shopId/draft-posts/regenerate', async (req, res) => {
   const { shopId } = req.params;
   const { dayIndex, all } = req.body; // Expect dayIndex (0,1,2) or all (boolean)
 
+  if (!all && typeof dayIndex === 'number' && dayIndex === -1) {
+    return res.status(400).json({ error: '投稿済みの下書きは再作成できません。' });
+  }
+
   try {
     const shop = await prisma.shop.findUnique({
       where: { id: shopId },
