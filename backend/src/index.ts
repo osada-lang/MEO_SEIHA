@@ -173,6 +173,22 @@ app.get('/api/auth/me', async (req, res) => {
   }
 });
 
+// GET /api/shops (Get list of all stores - Master / Admin access)
+app.get('/api/shops', async (req, res) => {
+  try {
+    const shops = await prisma.shop.findMany({
+      where: {
+        role: 'OWNER'
+      },
+      orderBy: { name: 'asc' }
+    });
+    return res.json({ shops });
+  } catch (error) {
+    console.error('❌ Failed to fetch shops list:', error);
+    return res.status(500).json({ error: '店舗一覧の取得に失敗しました。' });
+  }
+});
+
 // ==========================================
 // 📊 Dashboard & Settings Endpoints
 // ==========================================
@@ -1710,4 +1726,34 @@ app.listen(port, () => {
   setTimeout(() => {
     runBackgroundScheduler().catch(err => console.error('❌ Startup scheduler run failed:', err));
   }, 5000); // Wait 5 seconds after startup to let initialization settle
+
+  // Master Account (thanxcreate.gbp@gmail.com) Automatic Initialization / Sync
+  setTimeout(async () => {
+    try {
+      console.log('👤 Checking Master Account (thanxcreate.gbp@gmail.com) initialization...');
+      const thanxOwner = await prisma.shop.findUnique({
+        where: { email: 'thanxcreate@gmail.com' }
+      });
+      const password = thanxOwner ? thanxOwner.password : 'password';
+
+      const masterAccount = await prisma.shop.upsert({
+        where: { email: 'thanxcreate.gbp@gmail.com' },
+        update: {
+          password: password,
+          role: 'ADMIN',
+        },
+        create: {
+          name: 'MEO SEIHA運営本部',
+          email: 'thanxcreate.gbp@gmail.com',
+          password: password,
+          role: 'ADMIN',
+          google_drive_folder_id: thanxOwner ? thanxOwner.google_drive_folder_id : null,
+          google_location_id: thanxOwner ? thanxOwner.google_location_id : null,
+        }
+      });
+      console.log(`✅ Master Account configured successfully! (Email: ${masterAccount.email}, Role: ${masterAccount.role})`);
+    } catch (dbErr: any) {
+      console.error('❌ Failed to initialize Master Account:', dbErr.message || dbErr);
+    }
+  }, 2000);
 });

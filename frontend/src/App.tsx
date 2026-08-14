@@ -135,6 +135,29 @@ export default function App() {
   const [isRegeneratingDraft, setIsRegeneratingDraft] = useState<{ [dayIndex: number]: boolean }>({});
   const [isRegeneratingAll, setIsRegeneratingAll] = useState<boolean>(false);
 
+  // Master Account Shops List State
+  const [shopsList, setShopsList] = useState<ShopProfile[]>([]);
+
+  // Fetch shops list for master/admin accounts
+  useEffect(() => {
+    if (userRole === 'ADMIN' && token) {
+      const fetchShops = async () => {
+        try {
+          const res = await fetch(`${API_BASE}/shops`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setShopsList(data.shops);
+          }
+        } catch (err) {
+          console.error('Failed to fetch shops list:', err);
+        }
+      };
+      fetchShops();
+    }
+  }, [userRole, token]);
+
   // Auto-login or initial session verification on reload
   useEffect(() => {
     const verifySession = async () => {
@@ -164,10 +187,6 @@ export default function App() {
     };
 
     verifySession();
-    // Suppress unused local variables warning for production build
-    if (false) {
-      console.log(userRole, handleDemoSwitch);
-    }
   }, [token]);
 
   // Load active tab data when shop or tab changes
@@ -263,6 +282,7 @@ export default function App() {
     setReviews([]);
   };
 
+  /*
   // Demo Fast Switcher (For easy demo purposes - switch between seeded profiles instantly)
   const handleDemoSwitch = async (emailAddr: string) => {
     setIsLoading(true);
@@ -288,6 +308,7 @@ export default function App() {
       setIsLoading(false);
     }
   };
+  */
 
   /*
   // Toggle Auto-reply ON/OFF status
@@ -828,6 +849,17 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => {
+                    setEmail('thanxcreate.gbp@gmail.com');
+                    setPassword('password');
+                  }}
+                  className="w-full bg-slate-50 hover:bg-stripeIndigo-50 border border-slate-200 hover:border-stripeIndigo-200 text-stripeInk-secondary font-bold text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-between group"
+                >
+                  <span>合同会社THANX CREATE (マスター)</span>
+                  <span className="text-[10px] bg-indigo-600 text-white px-2.5 py-0.5 rounded-full font-bold">MASTER</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
                     setEmail('thanxcreate@gmail.com');
                     setPassword('password');
                   }}
@@ -857,7 +889,9 @@ export default function App() {
         <div className="flex items-center gap-2.5">
           <div className="hidden md:block text-right">
             <p className="text-xs font-black text-slate-900 leading-tight">{currentShop.name}</p>
-            <p className="text-[10px] text-slate-500 font-bold">店舗オーナー</p>
+            <p className="text-[10px] text-slate-500 font-bold">
+              {userRole === 'ADMIN' ? '👑 マスター管理者' : '店舗オーナー'}
+            </p>
           </div>
           <button
             onClick={handleLogout}
@@ -889,6 +923,36 @@ export default function App() {
       <div className="flex-1 flex flex-col sm:pl-60">
         {/* 🚀 Active Screen Container */}
         <main className="flex-1 max-w-md lg:max-w-6xl w-full mx-auto px-4 py-5 space-y-5">
+          {/* Master Account Shop Switcher (Mobile) */}
+          {userRole === 'ADMIN' && shopsList.length > 0 && (
+            <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-3.5 space-y-2 shadow-sm sm:hidden no-print">
+              <label className="block text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none">
+                👑 マスター店舗切替 (ADMIN)
+              </label>
+              <div className="relative mt-1">
+                <select
+                  value={currentShop?.id || ''}
+                  onChange={(e) => {
+                    const targetShop = shopsList.find(s => s.id === e.target.value);
+                    if (targetShop) {
+                      setCurrentShop(targetShop);
+                      showBanner('success', `「${targetShop.name}」のデータに切り替えました。`);
+                    }
+                  }}
+                  className="block w-full border border-indigo-200 rounded-xl px-3 py-2 text-xs font-bold bg-white text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer appearance-none"
+                >
+                  {shopsList.map((shop) => (
+                    <option key={shop.id} value={shop.id}>
+                      {shop.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-indigo-500">
+                  <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                </div>
+              </div>
+            </div>
+          )}
 
         {/* 1️⃣ SCREEN: Dashboard */}
         {activeTab === 'dashboard' && dashboard && (
@@ -1979,6 +2043,37 @@ export default function App() {
       {/* 🖥️ Desktop sidebar or global side menu for wide monitors */}
       <aside className="hidden sm:flex fixed top-16 left-0 bottom-0 w-60 bg-white border-r border-slate-200/80 p-4 flex-col justify-between shadow-sm z-30 no-print">
         <div className="space-y-2">
+          {/* Master Account Shop Switcher (Desktop) */}
+          {userRole === 'ADMIN' && shopsList.length > 0 && (
+            <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-3.5 space-y-2 mb-4 shadow-sm">
+              <label className="block text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none">
+                👑 マスター店舗切替 (ADMIN)
+              </label>
+              <div className="relative mt-1">
+                <select
+                  value={currentShop?.id || ''}
+                  onChange={(e) => {
+                    const targetShop = shopsList.find(s => s.id === e.target.value);
+                    if (targetShop) {
+                      setCurrentShop(targetShop);
+                      showBanner('success', `「${targetShop.name}」のデータに切り替えました。`);
+                    }
+                  }}
+                  className="block w-full border border-indigo-200 rounded-xl px-3 py-2 text-xs font-bold bg-white text-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer appearance-none"
+                >
+                  {shopsList.map((shop) => (
+                    <option key={shop.id} value={shop.id}>
+                      {shop.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-indigo-500">
+                  <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                </div>
+              </div>
+            </div>
+          )}
+
           <button
             onClick={() => setActiveTab('dashboard')}
             className={`w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center gap-3 transition-all ${
@@ -2040,7 +2135,9 @@ export default function App() {
         </div>
 
         <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 space-y-1">
-          <p className="text-[10px] font-black text-slate-400 uppercase leading-none">ログインアカウント</p>
+          <p className="text-[10px] font-black text-slate-400 uppercase leading-none">
+            {userRole === 'ADMIN' ? '👑 マスターアカウント' : 'ログインアカウント'}
+          </p>
           <p className="text-xs font-black text-slate-800 leading-tight pt-1 truncate" title={currentShop.name}>{currentShop.name}</p>
           <p className="text-[9px] text-slate-400 font-bold truncate" title={currentShop.email}>{currentShop.email}</p>
         </div>
