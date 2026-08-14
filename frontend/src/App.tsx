@@ -657,6 +657,38 @@ export default function App() {
   };
 
 
+  // Delete review log from list
+  const handleDeleteReview = async (reviewId: string) => {
+    if (!currentShop) return;
+    if (!window.confirm('この口コミ履歴をデータベースから削除してもよろしいですか？\n(Googleマイビジネス側の実際の口コミは削除されません)')) return;
+
+    setIsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/shops/${currentShop.id}/reviews/${reviewId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setReviews(prev => prev.filter(r => r.review_id !== reviewId));
+        showBanner('success', '🗑️ 口コミ履歴を削除しました。');
+        
+        // Refresh dashboard count
+        const dashRes = await fetch(`${API_BASE}/shops/${currentShop.id}/dashboard`);
+        if (dashRes.ok) {
+          const dashData = await dashRes.json();
+          setDashboard(dashData.dashboard);
+        }
+      } else {
+        showBanner('error', data.error || '口コミの削除に失敗しました。');
+      }
+    } catch (err) {
+      showBanner('error', '通信エラー：口コミ履歴を削除できませんでした。');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
   // loading screens
   if (isPageLoading) {
     return (
@@ -1708,32 +1740,43 @@ export default function App() {
                           </div>
                         </div>
 
-                        {/* Status label tag */}
-                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
-                          isPendingReply
-                            ? (review.star_rating <= 2
-                              ? 'bg-rose-100 text-rose-700 border border-rose-200 animate-pulse'
-                              : (dashboard?.replyActive
-                                ? 'bg-amber-100 text-amber-700 border border-amber-200 animate-pulse'
-                                : 'bg-indigo-100 text-indigo-700 border border-indigo-200 animate-pulse'
+                        {/* Status label tag and action buttons */}
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                            isPendingReply
+                              ? (review.star_rating <= 2
+                                ? 'bg-rose-100 text-rose-700 border border-rose-200 animate-pulse'
+                                : (dashboard?.replyActive
+                                  ? 'bg-amber-100 text-amber-700 border border-amber-200 animate-pulse'
+                                  : 'bg-indigo-100 text-indigo-700 border border-indigo-200 animate-pulse'
+                                )
                               )
-                            )
-                            : (review.star_rating >= 3
-                              ? 'bg-indigo-50 text-indigo-700 border border-indigo-100'
-                              : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                            )
-                        }`}>
-                          {isPendingReply
-                            ? (review.star_rating <= 2
-                              ? '承認待ち (保留中)'
-                              : (dashboard?.replyActive
-                                ? '自動送信待ち (1時間後)'
-                                : '承認待ち (保留中)'
+                              : (review.star_rating >= 3
+                                ? 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
                               )
-                            )
-                            : (review.star_rating >= 3 ? '自動送信完了' : '手動送信完了')
-                          }
-                        </span>
+                          }`}>
+                            {isPendingReply
+                              ? (review.star_rating <= 2
+                                ? '承認待ち (保留中)'
+                                : (dashboard?.replyActive
+                                  ? '自動送信待ち (1時間後)'
+                                  : '承認待ち (保留中)'
+                                )
+                              )
+                              : (review.star_rating >= 3 ? '自動送信完了' : '手動送信完了')
+                            }
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteReview(review.review_id)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                            title="口コミ履歴を削除"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Customer Review comment */}

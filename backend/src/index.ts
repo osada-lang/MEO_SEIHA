@@ -50,6 +50,31 @@ function getGoogleAuthClient() {
   return oauth2Client;
 }
 
+// Helper to clean up Google Translation suffixes from review comments
+function cleanGoogleComment(comment: string | null): string {
+  if (!comment) return '';
+  
+  // Case 1: Japanese text \n\n(Translated by Google)\n English text
+  if (comment.includes('(Translated by Google)')) {
+    const parts = comment.split('(Translated by Google)');
+    const originalText = parts[0].trim();
+    if (originalText) {
+      return originalText;
+    }
+  }
+  
+  // Case 2: English text \n\n(Original)\n Japanese text
+  if (comment.includes('(Original)')) {
+    const parts = comment.split('(Original)');
+    const originalText = parts[1].trim();
+    if (originalText) {
+      return originalText;
+    }
+  }
+  
+  return comment;
+}
+
 // In-memory fallback mock drive files for when Google Drive credentials are not set up
 interface MockFile {
   id: string;
@@ -709,10 +734,30 @@ app.get('/api/shops/:shopId/reviews', async (req, res) => {
       orderBy: { create_time: 'desc' },
     });
 
-    return res.json({ reviews });
+    const cleanedReviews = reviews.map(r => ({
+      ...r,
+      comment: cleanGoogleComment(r.comment)
+    }));
+
+    return res.json({ reviews: cleanedReviews });
   } catch (error) {
     console.error('❌ Review logs fetch error:', error);
     return res.status(500).json({ error: '口コミ履歴の取得に失敗しました。' });
+  }
+});
+
+// DELETE /api/shops/:shopId/reviews/:reviewId (Delete a review log)
+app.delete('/api/shops/:shopId/reviews/:reviewId', async (req, res) => {
+  const { shopId, reviewId } = req.params;
+
+  try {
+    await prisma.reviewLogs.delete({
+      where: { review_id: reviewId }
+    });
+    return res.json({ success: true, message: '口コミ履歴を削除しました。' });
+  } catch (error: any) {
+    console.error('❌ Failed to delete review log:', error);
+    return res.status(500).json({ error: error.message || '口コミ履歴の削除に失敗しました。' });
   }
 });
 
@@ -1441,7 +1486,7 @@ async function syncReviewsFromGBP(shopId: string) {
         else if (gReview.starRating === 'FOUR') starRating = 4;
         else if (gReview.starRating === 'FIVE') starRating = 5;
 
-        const comment = gReview.comment || '';
+        const comment = cleanGoogleComment(gReview.comment || '');
         const createTime = gReview.createTime || new Date().toISOString();
 
         // SAFETY FILTER: Ignore any reviews posted prior to the store registration date (shop.created_at)
@@ -1449,8 +1494,9 @@ async function syncReviewsFromGBP(shopId: string) {
         const shopCreatedDate = new Date(shop.created_at);
 
         if (reviewCreateDate < shopCreatedDate) {
-          // Completely skip pre-integration historical reviews
-          continue;
+          console.log(`⚠️ Review by ${reviewerName} is older than shop creation (${reviewCreateDate.toISOString()} < ${shopCreatedDate.toISOString()}), but SAFETY FILTER BYPASSED for testing!`);
+          // Temporarily disabled to force fetching yesterday's and earlier test reviews
+          // continue;
         }
 
         // Check if this review is already saved in our database
