@@ -504,7 +504,7 @@ export default function App() {
 
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/shops/${currentShop.id}/reviews/${reviewId}/reply`, {
+      const res = await fetch(`${API_BASE}/shops/${currentShop.id}/reviews/${encodeURIComponent(reviewId)}/reply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ replyText }),
@@ -633,7 +633,7 @@ export default function App() {
     setIsLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE}/shops/${currentShop.id}/reviews/${reviewId}/regenerate-reply`, {
+      const res = await fetch(`${API_BASE}/shops/${currentShop.id}/reviews/${encodeURIComponent(reviewId)}/regenerate-reply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ directive: directiveText }),
@@ -664,7 +664,7 @@ export default function App() {
 
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/shops/${currentShop.id}/reviews/${reviewId}`, {
+      const res = await fetch(`${API_BASE}/shops/${currentShop.id}/reviews/${encodeURIComponent(reviewId)}`, {
         method: 'DELETE',
       });
       const data = await res.json();
