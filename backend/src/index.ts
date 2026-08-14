@@ -1752,6 +1752,73 @@ app.listen(port, () => {
         }
       });
       console.log(`✅ Master Account configured successfully! (Email: ${masterAccount.email}, Role: ${masterAccount.role})`);
+
+      // Sync existing THANX CREATE to direct agency
+      await prisma.shop.updateMany({
+        where: { id: 'thanx-create-uuid' },
+        data: { agency_name: 'THANXCREATE' }
+      });
+
+      // Initialize Mock Shop A (代理店A)
+      const shopA = await prisma.shop.upsert({
+        where: { email: 'salon.sakae@example.com' },
+        update: {
+          agency_name: '代理店A'
+        },
+        create: {
+          id: 'mock-shop-a-uuid',
+          name: 'テストヘアサロン 栄店',
+          email: 'salon.sakae@example.com',
+          password: 'password',
+          role: 'OWNER',
+          agency_name: '代理店A',
+          google_location_id: null,
+          google_drive_folder_id: null,
+          reply_active: true,
+        }
+      });
+      await prisma.shopKeywords.upsert({
+        where: { shop_id: shopA.id },
+        update: {},
+        create: {
+          shop_id: shopA.id,
+          main_keywords: JSON.stringify(['栄 美容室', 'カット', 'カラー']),
+          sub_keywords: JSON.stringify(['トリートメント', 'ヘッドスパ']),
+          fixed_footer: '店舗名: テストヘアサロン 栄店\n住所: 名古屋市中区栄3丁目',
+          custom_prompt: 'アットホームな雰囲気をアピールしてください。',
+        }
+      });
+
+      // Initialize Mock Shop B (代理店B)
+      const shopB = await prisma.shop.upsert({
+        where: { email: 'izakaya.nishiki@example.com' },
+        update: {
+          agency_name: '代理店B'
+        },
+        create: {
+          id: 'mock-shop-b-uuid',
+          name: 'テスト居酒屋 錦店',
+          email: 'izakaya.nishiki@example.com',
+          password: 'password',
+          role: 'OWNER',
+          agency_name: '代理店B',
+          google_location_id: null,
+          google_drive_folder_id: null,
+          reply_active: true,
+        }
+      });
+      await prisma.shopKeywords.upsert({
+        where: { shop_id: shopB.id },
+        update: {},
+        create: {
+          shop_id: shopB.id,
+          main_keywords: JSON.stringify(['錦 居酒屋', '焼き鳥', '個室']),
+          sub_keywords: JSON.stringify(['飲み放題', '接待']),
+          fixed_footer: '店舗名: テスト居酒屋 錦店\n住所: 名古屋市中区錦3丁目',
+          custom_prompt: '賑やかで活気のある雰囲気をアピールしてください。',
+        }
+      });
+      console.log('🏬 Mock testing shops (代理店A, 代理店B) initialized successfully!');
     } catch (dbErr: any) {
       console.error('❌ Failed to initialize Master Account:', dbErr.message || dbErr);
     }

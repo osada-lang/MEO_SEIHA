@@ -16,7 +16,8 @@ import {
   Sparkles,
   Send,
   Check,
-  Clock
+  Clock,
+  ArrowLeft
 } from 'lucide-react';
 
 const metaEnv = (import.meta as any).env;
@@ -31,6 +32,7 @@ interface ShopProfile {
   name: string;
   email: string;
   role: string;
+  agency_name: string | null;
   google_location_id: string | null;
   google_drive_folder_id: string | null;
   line_user_id: string | null;
@@ -135,8 +137,13 @@ export default function App() {
   const [isRegeneratingDraft, setIsRegeneratingDraft] = useState<{ [dayIndex: number]: boolean }>({});
   const [isRegeneratingAll, setIsRegeneratingAll] = useState<boolean>(false);
 
-  // Master Account Shops List State
+  // Master Account States
   const [shopsList, setShopsList] = useState<ShopProfile[]>([]);
+  const [isViewingShop, setIsViewingShop] = useState<boolean>(false);
+  const [shopSearchQuery, setShopSearchQuery] = useState<string>('');
+  const [expandedAgencies, setExpandedAgencies] = useState<{ [key: string]: boolean }>({
+    'THANXCREATE（直営店契約）': true
+  });
 
   // Fetch shops list for master/admin accounts
   useEffect(() => {
@@ -174,6 +181,7 @@ export default function App() {
         if (res.ok) {
           const data = await res.json();
           setCurrentShop(data.shop);
+          setIsViewingShop(data.shop.role !== 'ADMIN');
         } else {
           // Token expired or invalid
           localStorage.removeItem('token');
@@ -259,6 +267,7 @@ export default function App() {
         setUserRole(data.shop.role);
         setCurrentShop(data.shop);
         setActiveTab('dashboard');
+        setIsViewingShop(data.shop.role !== 'ADMIN');
       } else {
         setAuthError(data.error || 'ログインに失敗しました。');
       }
@@ -280,6 +289,8 @@ export default function App() {
     setSettings(null);
     setPhotos([]);
     setReviews([]);
+    setIsViewingShop(false);
+    setShopSearchQuery('');
   };
 
   /*
@@ -877,6 +888,162 @@ export default function App() {
   }
 
   // ==========================================
+  // 👑 Master Account Contracted Shops List Screen (ADMIN)
+  // ==========================================
+  if (token && currentShop && userRole === 'ADMIN' && !isViewingShop) {
+    // Group shopsList by agency name
+    const groupedShops: { [agency: string]: ShopProfile[] } = {};
+    const filteredShops = shopsList.filter(shop =>
+      shop.name.toLowerCase().includes(shopSearchQuery.toLowerCase()) ||
+      shop.email.toLowerCase().includes(shopSearchQuery.toLowerCase()) ||
+      (shop.agency_name && shop.agency_name.toLowerCase().includes(shopSearchQuery.toLowerCase()))
+    );
+
+    filteredShops.forEach((shop) => {
+      const agency = (!shop.agency_name || shop.agency_name.trim() === '' || shop.agency_name === 'THANXCREATE')
+        ? 'THANXCREATE（直営店契約）'
+        : shop.agency_name;
+      
+      if (!groupedShops[agency]) {
+        groupedShops[agency] = [];
+      }
+      groupedShops[agency].push(shop);
+    });
+
+    // Sort agencies so that THANXCREATE is always first
+    const sortedAgencies = Object.keys(groupedShops).sort((a, b) => {
+      if (a.startsWith('THANXCREATE')) return -1;
+      if (b.startsWith('THANXCREATE')) return 1;
+      return a.localeCompare(b, 'ja-JP');
+    });
+
+    return (
+      <div className="min-h-screen stripe-mesh flex flex-col justify-start py-8 px-4 sm:px-6 lg:px-8 bg-slate-950">
+        <div className="max-w-4xl w-full mx-auto space-y-6">
+          {/* Header Area */}
+          <div className="flex items-center justify-between bg-white/95 border border-white/20 p-5 rounded-3xl shadow-xl">
+            <div className="flex items-center gap-3">
+              <img src="/logo_bk.png" alt="MEO SEIHA" className="h-9 w-auto object-contain" />
+              <div className="border-l border-slate-200 pl-3">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider leading-none">MEO SEIHA マスターコントロール</p>
+                <h1 className="text-sm font-black text-slate-900 leading-none mt-1.5">契約店舗・代理店一覧</h1>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="text-right hidden sm:block">
+                <p className="text-xs font-black text-slate-800 leading-none">👑 {currentShop.name}</p>
+                <p className="text-[9px] text-slate-400 font-bold mt-1 truncate max-w-[150px]">{currentShop.email}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="p-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                title="ログアウト"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Search bar card */}
+          <div className="bg-white/95 border border-white/20 rounded-3xl p-5 shadow-xl space-y-3">
+            <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest leading-none">🔎 契約店舗を検索・絞り込み</h2>
+            <div className="relative">
+              <input
+                type="text"
+                value={shopSearchQuery}
+                onChange={(e) => setShopSearchQuery(e.target.value)}
+                placeholder="店舗名、メールアドレス、代理店名で検索..."
+                className="block w-full border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold bg-slate-50/50 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brandBlue-500 focus:border-transparent transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Hierarchy list */}
+          <div className="space-y-4">
+            {sortedAgencies.length === 0 ? (
+              <div className="bg-white/95 border border-white/20 rounded-3xl py-12 px-4 text-center space-y-2 shadow-xl">
+                <AlertTriangle className="w-8 h-8 text-slate-300 mx-auto" />
+                <p className="text-xs font-extrabold text-slate-700">該当する店舗が見つかりませんでした。</p>
+              </div>
+            ) : (
+              sortedAgencies.map((agency) => {
+                const shops = groupedShops[agency];
+                const isExpanded = expandedAgencies[agency] !== false; // default to expanded
+
+                return (
+                  <div key={agency} className="bg-white/95 border border-white/20 rounded-3xl shadow-xl overflow-hidden transition-all">
+                    {/* Agency Header row */}
+                    <button
+                      type="button"
+                      onClick={() => setExpandedAgencies({
+                        ...expandedAgencies,
+                        [agency]: !isExpanded
+                      })}
+                      className={`w-full px-5 py-4 flex items-center justify-between text-left transition-colors ${
+                        agency.startsWith('THANXCREATE') ? 'bg-indigo-50/50' : 'bg-slate-50/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className={`w-2.5 h-2.5 rounded-full ${
+                          agency.startsWith('THANXCREATE') ? 'bg-indigo-500' : 'bg-slate-500'
+                        }`} />
+                        <h2 className={`text-xs font-black uppercase tracking-wider ${
+                          agency.startsWith('THANXCREATE') ? 'text-indigo-900' : 'text-slate-800'
+                        }`}>
+                          {agency.startsWith('THANXCREATE') ? '👑 直営：THANXCREATE' : `🏢 代理店：${agency}`}
+                        </h2>
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                          agency.startsWith('THANXCREATE') ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-700'
+                        }`}>
+                          {shops.length}店舗
+                        </span>
+                      </div>
+                      <span className="text-xs font-black text-slate-400">
+                        {isExpanded ? '閉じる 🔼' : '開く 🔽'}
+                      </span>
+                    </button>
+
+                    {/* Expandable Shops List */}
+                    {isExpanded && (
+                      <div className="border-t border-slate-100 divide-y divide-slate-100 bg-white">
+                        {shops.map((shop) => (
+                          <div key={shop.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 hover:bg-slate-50/50 transition-colors">
+                            <div className="space-y-1">
+                              <h3 className="text-xs font-black text-slate-900">{shop.name}</h3>
+                              <p className="text-[10px] text-slate-400 font-bold">{shop.email}</p>
+                            </div>
+                            <div className="flex items-center gap-3 self-end sm:self-auto">
+                              <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                                shop.reply_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-slate-100 text-slate-500 border border-slate-200'
+                              }`}>
+                                {shop.reply_active ? '自動返信: 作動中' : '自動返信: 停止中'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCurrentShop(shop);
+                                  setIsViewingShop(true);
+                                }}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[10px] py-1.5 px-3.5 rounded-xl shadow-sm transition-all active:scale-[0.97]"
+                              >
+                                管理画面にアクセス ➔
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
   // 📱 Admin Layout & Navigation (Mobile-first Dashboard)
   // ==========================================
   return (
@@ -923,6 +1090,23 @@ export default function App() {
       <div className="flex-1 flex flex-col sm:pl-60">
         {/* 🚀 Active Screen Container */}
         <main className="flex-1 max-w-md lg:max-w-6xl w-full mx-auto px-4 py-5 space-y-5">
+          {/* Master Account Shop back button (Mobile) */}
+          {userRole === 'ADMIN' && isViewingShop && (
+            <button
+              onClick={() => {
+                setIsViewingShop(false);
+                setDashboard(null);
+                setSettings(null);
+                setPhotos([]);
+                setReviews([]);
+              }}
+              className="bg-indigo-50 border border-indigo-100 rounded-2xl p-3.5 text-xs font-black text-indigo-700 flex items-center justify-center gap-1.5 shadow-sm sm:hidden w-full no-print"
+            >
+              <ArrowLeft className="w-4.5 h-4.5" />
+              契約店舗一覧に戻る (管理者)
+            </button>
+          )}
+
           {/* Master Account Shop Switcher (Mobile) */}
           {userRole === 'ADMIN' && shopsList.length > 0 && (
             <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-3.5 space-y-2 shadow-sm sm:hidden no-print">
@@ -2043,6 +2227,23 @@ export default function App() {
       {/* 🖥️ Desktop sidebar or global side menu for wide monitors */}
       <aside className="hidden sm:flex fixed top-16 left-0 bottom-0 w-60 bg-white border-r border-slate-200/80 p-4 flex-col justify-between shadow-sm z-30 no-print">
         <div className="space-y-2">
+          {/* Master Account back button */}
+          {userRole === 'ADMIN' && (
+            <button
+              onClick={() => {
+                setIsViewingShop(false);
+                setDashboard(null);
+                setSettings(null);
+                setPhotos([]);
+                setReviews([]);
+              }}
+              className="w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center gap-3 transition-all bg-indigo-50 border border-indigo-100/60 text-indigo-700 hover:bg-indigo-100 mb-2 shadow-sm"
+            >
+              <ArrowLeft className="w-4.5 h-4.5" />
+              契約店舗一覧に戻る
+            </button>
+          )}
+
           {/* Master Account Shop Switcher (Desktop) */}
           {userRole === 'ADMIN' && shopsList.length > 0 && (
             <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-3.5 space-y-2 mb-4 shadow-sm">

@@ -42,6 +42,7 @@ async function main() {
         email: 'thanxcreate@gmail.com',
         password: 'password',
         role: 'OWNER',
+        agency_name: 'THANXCREATE',
         google_location_id: 'locations/3018418038085555463',
         google_drive_folder_id: '1AIgemm9-fvP-eLwP7p2p8Plja1mbOJtX',
         line_user_id: process.env.LINE_USER_ID || 'U205e0595cff6e3882288962525941500',
@@ -50,6 +51,75 @@ async function main() {
       },
     });
     console.log('🏬 Created THANX CREATE Shop.');
+  } else {
+    shop3 = await prisma.shop.update({
+      where: { id: 'thanx-create-uuid' },
+      data: { agency_name: 'THANXCREATE' }
+    });
+  }
+
+  // Check if mock store under 代理店A exists
+  const shopAExists = await prisma.shop.findUnique({
+    where: { id: 'mock-shop-a-uuid' }
+  });
+
+  if (!shopAExists) {
+    const shopA = await prisma.shop.create({
+      data: {
+        id: 'mock-shop-a-uuid',
+        name: 'テストヘアサロン 栄店',
+        email: 'salon.sakae@example.com',
+        password: 'password',
+        role: 'OWNER',
+        agency_name: '代理店A',
+        google_location_id: null,
+        google_drive_folder_id: null,
+        reply_active: true,
+      }
+    });
+
+    await prisma.shopKeywords.create({
+      data: {
+        shop_id: shopA.id,
+        main_keywords: JSON.stringify(['栄 美容室', 'カット', 'カラー']),
+        sub_keywords: JSON.stringify(['トリートメント', 'ヘッドスパ']),
+        fixed_footer: '店舗名: テストヘアサロン 栄店\n住所: 名古屋市中区栄3丁目',
+        custom_prompt: 'アットホームな雰囲気をアピールしてください。',
+      }
+    });
+    console.log('🏬 Created Mock Shop A under 代理店A.');
+  }
+
+  // Check if mock store under 代理店B exists
+  const shopBExists = await prisma.shop.findUnique({
+    where: { id: 'mock-shop-b-uuid' }
+  });
+
+  if (!shopBExists) {
+    const shopB = await prisma.shop.create({
+      data: {
+        id: 'mock-shop-b-uuid',
+        name: 'テスト居酒屋 錦店',
+        email: 'izakaya.nishiki@example.com',
+        password: 'password',
+        role: 'OWNER',
+        agency_name: '代理店B',
+        google_location_id: null,
+        google_drive_folder_id: null,
+        reply_active: true,
+      }
+    });
+
+    await prisma.shopKeywords.create({
+      data: {
+        shop_id: shopB.id,
+        main_keywords: JSON.stringify(['錦 居酒屋', '焼き鳥', '個室']),
+        sub_keywords: JSON.stringify(['飲み放題', '接待']),
+        fixed_footer: '店舗名: テスト居酒屋 錦店\n住所: 名古屋市中区錦3丁目',
+        custom_prompt: '賑やかで活気のある雰囲気をアピールしてください。',
+      }
+    });
+    console.log('🏬 Created Mock Shop B under 代理店B.');
   }
 
   // Check if ShopKeywords for THANX CREATE exists

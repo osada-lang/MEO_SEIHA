@@ -16,6 +16,7 @@ model Shop {
   email                 String        @unique
   password              String
   role                  String        @default("OWNER")
+  agency_name           String?       // Under which agency/franchise this shop operates
   google_location_id    String?
   google_drive_folder_id String?
   line_user_id          String?
