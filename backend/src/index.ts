@@ -1494,9 +1494,8 @@ async function syncReviewsFromGBP(shopId: string) {
         const shopCreatedDate = new Date(shop.created_at);
 
         if (reviewCreateDate < shopCreatedDate) {
-          console.log(`⚠️ Review by ${reviewerName} is older than shop creation (${reviewCreateDate.toISOString()} < ${shopCreatedDate.toISOString()}), but SAFETY FILTER BYPASSED for testing!`);
-          // Temporarily disabled to force fetching yesterday's and earlier test reviews
-          // continue;
+          console.log(`⚠️ Review by ${reviewerName} is older than shop creation (${reviewCreateDate.toISOString()} < ${shopCreatedDate.toISOString()}). Skipping historical pre-integration review.`);
+          continue;
         }
 
         // Check if this review is already saved in our database
