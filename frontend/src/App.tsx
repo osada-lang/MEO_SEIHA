@@ -1139,44 +1139,50 @@ export default function App() {
           )}
 
         {/* 1️⃣ SCREEN: Dashboard */}
-        {activeTab === 'dashboard' && dashboard && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:space-y-0 space-y-4 items-start">
-            {/* Left Panel: Store Info, Status, Switches */}
-            <div className="lg:col-span-5 space-y-4">
-              {/* Store Title Board */}
-              <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">現在管理中の店舗</p>
-                  <h2 className="text-xl font-black text-slate-900 leading-tight mt-0.5">{dashboard.shopName}</h2>
+        {activeTab === 'dashboard' && (
+          isLoading || !dashboard ? (
+            <div className="bg-white border border-slate-200/80 rounded-2xl py-16 px-4 text-center space-y-3 shadow-sm">
+              <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mx-auto" />
+              <p className="text-xs font-extrabold text-slate-600">ダッシュボードを読み込み中...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:space-y-0 space-y-4 items-start">
+              {/* Left Panel: Store Info, Status, Switches */}
+              <div className="lg:col-span-5 space-y-4">
+                {/* Store Title Board */}
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-3">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">現在管理中の店舗</p>
+                    <h2 className="text-xl font-black text-slate-900 leading-tight mt-0.5">{dashboard.shopName}</h2>
+                  </div>
+
+                  {/* 📍 Quick Links */}
+                  <div className="pt-1.5">
+                    <a
+                      href={dashboard.gbpActionUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dashboard.shopName)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="bg-slate-50 hover:bg-indigo-50 border border-slate-200/80 hover:border-indigo-200 p-3.5 rounded-xl transition-all flex items-center justify-between text-left group w-full"
+                    >
+                      <div>
+                        <span className="text-[10px] font-black text-slate-400 group-hover:text-indigo-500 transition-colors uppercase block">Google Maps</span>
+                        <span className="text-xs font-bold text-slate-800 block mt-0.5">店舗を確認</span>
+                      </div>
+                      <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
+                    </a>
+                  </div>
                 </div>
 
-                {/* 📍 Quick Links */}
-                <div className="pt-1.5">
-                  <a
-                    href={dashboard.gbpActionUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dashboard.shopName)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="bg-slate-50 hover:bg-indigo-50 border border-slate-200/80 hover:border-indigo-200 p-3.5 rounded-xl transition-all flex items-center justify-between text-left group w-full"
+                {/* CARD 3: Blink Emergency review alert banner */}
+                {dashboard.pendingReviewsCount > 0 && (
+                  <button
+                    onClick={() => setActiveTab('reviews')}
+                    className="w-full bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-900 rounded-2xl p-4 shadow-sm flex items-center justify-between text-left group animate-pulse transition-all"
                   >
-                    <div>
-                      <span className="text-[10px] font-black text-slate-400 group-hover:text-indigo-500 transition-colors uppercase block">Google Maps</span>
-                      <span className="text-xs font-bold text-slate-800 block mt-0.5">店舗を確認</span>
-                    </div>
-                    <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
-                  </a>
-                </div>
-              </div>
-
-              {/* CARD 3: Blink Emergency review alert banner */}
-              {dashboard.pendingReviewsCount > 0 && (
-                <button
-                  onClick={() => setActiveTab('reviews')}
-                  className="w-full bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-900 rounded-2xl p-4 shadow-sm flex items-center justify-between text-left group animate-pulse transition-all"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="w-9 h-9 rounded-xl bg-rose-500/10 flex items-center justify-center shrink-0">
-                      <AlertTriangle className="w-5 h-5 text-rose-600" />
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="w-9 h-9 rounded-xl bg-rose-500/10 flex items-center justify-center shrink-0">
+                        <AlertTriangle className="w-5 h-5 text-rose-600" />
+                      </span>
                     <div>
                       <h3 className="text-sm font-extrabold">🚨 緊急お詫び下書きの承認待ち</h3>
                       <p className="text-xs text-rose-700 font-bold mt-0.5">
@@ -1520,7 +1526,8 @@ export default function App() {
                   )}
             </div>
           </div>
-        )}
+        )
+      )}
 
         {/* 2️⃣ SCREEN: Photos (Google Drive Image Manager) */}
         {activeTab === 'photos' && (
@@ -1612,8 +1619,14 @@ export default function App() {
         )}
 
         {/* 3️⃣ SCREEN: Settings */}
-        {activeTab === 'settings' && settings && (
-          <form onSubmit={handleSaveSettings} className="space-y-4">
+        {activeTab === 'settings' && (
+          isLoading || !settings ? (
+            <div className="bg-white border border-slate-200/80 rounded-2xl py-16 px-4 text-center space-y-3 shadow-sm">
+              <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mx-auto" />
+              <p className="text-xs font-extrabold text-slate-600">自動投稿・返信設定を読み込み中...</p>
+            </div>
+          ) : (
+            <form onSubmit={handleSaveSettings} className="space-y-4">
 
             {/* CARD: Toggle Switch Card for Auto-reply inside Settings */}
             <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
@@ -1936,7 +1949,8 @@ export default function App() {
               </button>
             </div>
           </form>
-        )}
+        )
+      )}
 
         {/* 4️⃣ SCREEN: Review Logs & AI apology list */}
         {activeTab === 'reviews' && (
