@@ -967,29 +967,12 @@ export default function App() {
                     </span>
                   </div>
 
-                  {dashboard.imageCount > 0 ? (
-                    <div className="border-t border-slate-50 pt-3 space-y-2">
-                      <span className="text-xs font-black text-slate-400 block uppercase">本日投稿予定の写真</span>
-                      <div className="relative rounded-xl overflow-hidden border border-slate-200/80 aspect-video bg-slate-900/5 flex items-center justify-center">
-                        <img
-                          src={dashboard.previewImage ? (dashboard.previewImage.startsWith('http') ? dashboard.previewImage : `${API_BASE.replace('/api', '')}${dashboard.previewImage}`) : "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=600"}
-                          alt="Next Scheduled Post Preview"
-                          className="object-cover w-full h-full"
-                        />
-                        <div className="absolute top-2.5 left-2.5 bg-slate-950/80 text-white text-[9px] font-bold tracking-wider uppercase px-2 py-0.5 rounded">
-                          Drive同期写真
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 text-center space-y-1.5 mt-3">
-                      <AlertTriangle className="w-5 h-5 text-indigo-500 mx-auto" />
-                      <p className="text-xs font-extrabold text-slate-800">画像ストックが 0枚 です</p>
-                      <p className="text-[10px] text-slate-500 font-bold leading-relaxed max-w-[240px] mx-auto">
-                        画像なしの「テキストのみ投稿」を継続します。写真をストック管理画面から追加してください。
-                      </p>
-                    </div>
-                  )}
+                  <div className="flex items-start justify-between gap-4 text-xs font-bold border-t border-slate-50 pt-3">
+                    <span className="text-slate-400 uppercase">画像ストック状況</span>
+                    <span className={`font-black text-right ${dashboard.imageCount > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      {dashboard.imageCount > 0 ? `${dashboard.imageCount}枚（画像自動連携中）` : '0枚（テキストのみ投稿）'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -1136,19 +1119,24 @@ export default function App() {
                             </div>
 
                             {d.imageFileId && !isEditing && (
-                              <div className="flex items-center gap-3 bg-slate-50/50 border border-slate-100 rounded-xl p-2.5">
-                                <div className="w-14 h-14 bg-slate-900/5 rounded-lg overflow-hidden border border-slate-200/60 shrink-0">
+                              <div className="flex items-start gap-4 bg-slate-50/50 border border-slate-100 rounded-xl p-3.5">
+                                <div className="w-24 h-24 bg-slate-900/5 rounded-xl overflow-hidden border border-slate-200/60 shrink-0 shadow-sm">
                                   <img
                                     src={`${API_BASE.replace('/api', '')}/api/shops/${currentShop?.id}/drive-images/${d.imageFileId}/view`}
                                     alt="投稿予定の写真"
-                                    className="object-cover w-full h-full"
+                                    className="object-cover w-full h-full hover:scale-105 transition-transform duration-200"
                                   />
                                 </div>
-                                <div className="text-[10px] text-slate-500 font-bold space-y-0.5">
-                                  <span className="text-[9px] bg-brandBlue-50 text-brandBlue-700 border border-brandBlue-100/60 px-1.5 py-0.5 rounded-full font-black">
+                                <div className="text-[10px] text-slate-500 font-bold space-y-1.5 pt-1">
+                                  <span className="text-[9px] bg-brandBlue-50 text-brandBlue-700 border border-brandBlue-100/60 px-2 py-0.5 rounded-full font-black">
                                     📸 投稿予定の写真
                                   </span>
-                                  <p className="pt-0.5">この下書きと一緒にGoogleマップへ投稿されます。</p>
+                                  <p className="text-slate-700 font-extrabold text-[11px] leading-relaxed">
+                                    この下書きと一緒にGoogleマップへ投稿されます。
+                                  </p>
+                                  <p className="text-[10px] text-slate-400 font-normal leading-normal">
+                                    店舗オーナー用のGoogle Driveストックから、自動的に最適な画像が割り振られています。
+                                  </p>
                                 </div>
                               </div>
                             )}
