@@ -504,6 +504,13 @@ export default function App() {
       return;
     }
 
+    // Determine if the review is low rating or positive rating to customize success banner wording
+    const matchingReview = reviews.find(r => r.review_id === reviewId);
+    const isLowRating = matchingReview ? matchingReview.star_rating <= 2 : true;
+    const successMsg = isLowRating
+      ? '🟢 AIお詫び文を編集し、Googleマップ（GBP）に返信を送信しました！'
+      : '🟢 AIお礼文を編集し、Googleマップ（GBP）に返信を送信しました！';
+
     setIsLoading(true);
     try {
       const res = await fetch(`${API_BASE}/shops/${currentShop.id}/reviews/${encodeURIComponent(reviewId)}/reply`, {
@@ -513,7 +520,7 @@ export default function App() {
       });
 
       if (res.ok) {
-        showBanner('success', '🟢 AIお詫び文を編集し、Googleマップ（GBP）に返信を送信しました！');
+        showBanner('success', successMsg);
         // Refresh reviews list
         const revRes = await fetch(`${API_BASE}/shops/${currentShop.id}/reviews`);
         if (revRes.ok) {
@@ -647,7 +654,14 @@ export default function App() {
           ...prev,
           [reviewId]: data.replyText,
         }));
-        showBanner('success', '🪄 AIが指定された指示に従ってお詫び文を書き直しました！');
+
+        const matchingReview = reviews.find(r => r.review_id === reviewId);
+        const isLowRating = matchingReview ? matchingReview.star_rating <= 2 : true;
+        const successMsg = isLowRating
+          ? '🪄 AIが指定された指示に従ってお詫び文を書き直しました！'
+          : '🪄 AIが指定された指示に従ってお礼文を書き直しました！';
+
+        showBanner('success', successMsg);
       } else {
         showBanner('error', data.error || '再生成に失敗しました。');
       }
