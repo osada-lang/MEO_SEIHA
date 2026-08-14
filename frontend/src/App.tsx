@@ -1314,7 +1314,12 @@ export default function App() {
                 現在のストック写真一覧 ({photos.length}枚)
               </span>
 
-              {photos.length === 0 ? (
+              {isLoading ? (
+                <div className="bg-white border border-slate-200/80 rounded-2xl py-12 px-4 text-center space-y-3">
+                  <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mx-auto" />
+                  <p className="text-xs font-extrabold text-slate-600">Google Driveから写真を同期中...</p>
+                </div>
+              ) : photos.length === 0 ? (
                 <div className="bg-white border border-slate-200/80 rounded-2xl py-12 px-4 text-center space-y-2">
                   <ImageIcon className="w-8 h-8 text-slate-300 mx-auto" />
                   <p className="text-xs font-extrabold text-slate-700">写真がありません</p>
@@ -1695,7 +1700,12 @@ export default function App() {
 
             {/* List */}
             <div className="space-y-3">
-              {reviews.length === 0 ? (
+              {isLoading ? (
+                <div className="bg-white border border-slate-200/80 rounded-2xl py-12 px-4 text-center space-y-3">
+                  <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mx-auto" />
+                  <p className="text-xs font-extrabold text-slate-600">Googleマイビジネスから口コミを同期中...</p>
+                </div>
+              ) : reviews.length === 0 ? (
                 <div className="bg-white border border-slate-200/80 rounded-2xl py-12 px-4 text-center space-y-2">
                   <MessageSquare className="w-8 h-8 text-slate-300 mx-auto" />
                   <p className="text-xs font-extrabold text-slate-700">口コミ履歴がありません</p>
