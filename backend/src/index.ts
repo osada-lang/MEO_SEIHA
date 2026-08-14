@@ -1283,6 +1283,20 @@ async function executeDailyPostRollover(shopId: string) {
       const oauth2Client = new google.auth.OAuth2(clientID, clientSecret, 'http://localhost');
       oauth2Client.setCredentials({ refresh_token: refreshToken });
       
+      // Determine if there is an image to attach
+      let mediaPayload = undefined;
+      if (publishedPost.imageFileId) {
+        const apiBaseUrl = process.env.RENDER_EXTERNAL_URL || process.env.BACKEND_API_BASE_URL || 'http://localhost:3000';
+        const sourceUrl = `${apiBaseUrl}/api/shops/${shopId}/drive-images/${publishedPost.imageFileId}/view`;
+        console.log(`📸 Attaching image to GBP post: ${sourceUrl}`);
+        mediaPayload = [
+          {
+            mediaFormat: 'PHOTO',
+            sourceUrl: sourceUrl,
+          }
+        ];
+      }
+
       // Post to GMB v4 LocalPosts API
       const response = await oauth2Client.request({
         url: `https://mybusiness.googleapis.com/v4/${resolvedPath}/localPosts`,
@@ -1291,6 +1305,7 @@ async function executeDailyPostRollover(shopId: string) {
           languageCode: 'ja-JP',
           summary: publishedPost.text,
           topicType: 'STANDARD',
+          ...(mediaPayload ? { media: mediaPayload } : {})
         }
       });
 
