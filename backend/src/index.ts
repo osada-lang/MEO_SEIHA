@@ -701,6 +701,9 @@ app.get('/api/shops/:shopId/reviews', async (req, res) => {
   const { shopId } = req.params;
 
   try {
+    // Dynamically fetch and sync latest reviews from GBP in real-time!
+    await syncReviewsFromGBP(shopId);
+
     const reviews = await prisma.reviewLogs.findMany({
       where: { shop_id: shopId },
       orderBy: { create_time: 'desc' },
@@ -1394,6 +1397,105 @@ async function resolveGoogleLocationPath(oauth2Client: any, locationIdInput: str
   return null;
 }
 
+// Helper to fetch, sync, and notify about new Google Business Profile reviews in real-time
+async function syncReviewsFromGBP(shopId: string) {
+  const clientID = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+  const googleAuthAvailable = !!(clientID && clientSecret && refreshToken);
+
+  if (!googleAuthAvailable) return;
+
+  const shop = await prisma.shop.findUnique({
+    where: { id: shopId },
+  });
+
+  if (!shop || !shop.google_location_id) return;
+
+  try {
+    const oauth2Client = new google.auth.OAuth2(clientID, clientSecret, 'http://localhost');
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+    // Dynamically resolve GMB location path (handles accounts/... or raw numerical IDs)
+    const locationPath = await resolveGoogleLocationPath(oauth2Client, shop.google_location_id);
+
+    if (locationPath) {
+      console.log(`📡 Fetching latest GBP reviews for store: "${shop.name}"...`);
+
+      // Fetch latest 10 reviews from Google My Business API
+      const reviewsRes = await oauth2Client.request({
+        url: `https://mybusiness.googleapis.com/v4/${locationPath}/reviews`,
+        method: 'GET'
+      });
+
+      const gbpReviews = (reviewsRes.data as any).reviews || [];
+      for (const gReview of gbpReviews) {
+        const reviewId = gReview.name; // Full resource name e.g. "accounts/X/locations/Y/reviews/Z"
+        const reviewerName = gReview.reviewer?.displayName || '匿名ユーザー';
+
+        // Map GMB star rating string to number
+        let starRating: 1 | 2 | 3 | 4 | 5 = 3;
+        if (gReview.starRating === 'ONE') starRating = 1;
+        else if (gReview.starRating === 'TWO') starRating = 2;
+        else if (gReview.starRating === 'THREE') starRating = 3;
+        else if (gReview.starRating === 'FOUR') starRating = 4;
+        else if (gReview.starRating === 'FIVE') starRating = 5;
+
+        const comment = gReview.comment || '';
+        const createTime = gReview.createTime || new Date().toISOString();
+
+        // SAFETY FILTER: Ignore any reviews posted prior to the store registration date (shop.created_at)
+        const reviewCreateDate = new Date(createTime);
+        const shopCreatedDate = new Date(shop.created_at);
+
+        if (reviewCreateDate < shopCreatedDate) {
+          // Completely skip pre-integration historical reviews
+          continue;
+        }
+
+        // Check if this review is already saved in our database
+        const existing = await prisma.reviewLogs.findUnique({
+          where: { review_id: reviewId }
+        });
+
+        if (!existing) {
+          console.log(`🆕 Detected brand NEW review from Google for "${shop.name}": Rating=${starRating} | Reviewer="${reviewerName}"`);
+
+          // Handle new review using ReviewHandlerService (pass shop.reply_active)
+          const handleResult = await reviewHandler.handleNewReview(
+            {
+              reviewId,
+              reviewerName,
+              starRating: starRating as any,
+              comment,
+              createTime
+            },
+            shop.name,
+            shop.custom_review_prompt || undefined,
+            shop.reply_active
+          );
+
+          // Save the review to our local database
+          await prisma.reviewLogs.create({
+            data: {
+              shop_id: shop.id,
+              review_id: reviewId,
+              reviewer_name: reviewerName,
+              star_rating: starRating,
+              comment,
+              reply_text: handleResult.replyText,
+              is_auto_replied: false,
+              create_time: new Date(createTime), // Robust Date parsing
+            }
+          });
+        }
+      }
+    }
+  } catch (err: any) {
+    console.error(`❌ Real-time review sync failed for "${shop.name}":`, err.message || err);
+  }
+}
+
 // In-memory set to prevent double posting in the same hour
 const alreadyPostedToday = new Set<string>();
 
@@ -1439,93 +1541,9 @@ async function runBackgroundScheduler() {
         }
       }
 
-      // 2. Check and Fetch New Google Reviews for Auto-Replies
+      // 2. Check and Fetch New Google Reviews for Auto-Replies (Unified Sync)
       if (googleAuthAvailable && shop.google_location_id) {
-        try {
-          const oauth2Client = new google.auth.OAuth2(clientID, clientSecret, 'http://localhost');
-          oauth2Client.setCredentials({ refresh_token: refreshToken });
-
-          // Dynamically resolve GMB location path (handles accounts/... or raw numerical IDs)
-          const locationPath = await resolveGoogleLocationPath(oauth2Client, shop.google_location_id);
-
-          if (locationPath) {
-            console.log(`📡 Background fetching new GBP reviews for store: "${shop.name}" using path: "${locationPath}"...`);
-
-            // Fetch latest 10 reviews from Google My Business API
-            const reviewsRes = await oauth2Client.request({
-              url: `https://mybusiness.googleapis.com/v4/${locationPath}/reviews`,
-              method: 'GET'
-            });
-
-            const gbpReviews = (reviewsRes.data as any).reviews || [];
-            for (const gReview of gbpReviews) {
-              const reviewId = gReview.name; // Full resource name e.g. "accounts/X/locations/Y/reviews/Z"
-              const reviewerName = gReview.reviewer?.displayName || '匿名ユーザー';
-
-              // Map GMB star rating string to number
-              let starRating: 1 | 2 | 3 | 4 | 5 = 3;
-              if (gReview.starRating === 'ONE') starRating = 1;
-              else if (gReview.starRating === 'TWO') starRating = 2;
-              else if (gReview.starRating === 'THREE') starRating = 3;
-              else if (gReview.starRating === 'FOUR') starRating = 4;
-              else if (gReview.starRating === 'FIVE') starRating = 5;
-
-              const comment = gReview.comment || '';
-              const createTime = gReview.createTime || new Date().toISOString();
-
-              // SAFETY FILTER: Ignore any reviews posted prior to the store registration date (shop.created_at)
-              const reviewCreateDate = new Date(createTime);
-              const shopCreatedDate = new Date(shop.created_at);
-
-              if (reviewCreateDate < shopCreatedDate) {
-                // Completely skip pre-integration historical reviews
-                continue;
-              }
-
-              // Check if this review is already saved in our database
-              const existing = await prisma.reviewLogs.findUnique({
-                where: { review_id: reviewId }
-              });
-
-              if (!existing) {
-                console.log(`🆕 Detected brand NEW review from Google for "${shop.name}": Rating=${starRating} | Reviewer="${reviewerName}"`);
-
-                // Handle new review using ReviewHandlerService (pass shop.reply_active)
-                const handleResult = await reviewHandler.handleNewReview(
-                  {
-                    reviewId,
-                    reviewerName,
-                    starRating: starRating as any,
-                    comment,
-                    createTime
-                  },
-                  shop.name,
-                  shop.custom_review_prompt || undefined,
-                  shop.reply_active
-                );
-
-                // All new reviews are saved initially as draft (is_auto_replied = false)
-                let finalReplyText = handleResult.replyText;
-
-                // Save the review to our local database
-                await prisma.reviewLogs.create({
-                  data: {
-                    shop_id: shop.id,
-                    review_id: reviewId,
-                    reviewer_name: reviewerName,
-                    star_rating: starRating,
-                    comment,
-                    reply_text: finalReplyText,
-                    is_auto_replied: false,
-                    create_time: new Date(createTime), // Robust Date parsing
-                  }
-                });
-              }
-            }
-          }
-        } catch (scErr: any) {
-          console.error(`❌ Background review fetch failed for "${shop.name}":`, scErr.message || scErr);
-        }
+        await syncReviewsFromGBP(shop.id);
       }
 
       // 3. Process Delayed Auto-Replies (ON status, star >= 3, is_auto_replied === false, 1-hour elapsed)
