@@ -1561,8 +1561,24 @@ async function runBackgroundScheduler() {
     });
 
     const now = new Date();
-    const currentHour = now.getHours();
-    const todayStr = now.toISOString().split('T')[0]; // e.g. "2026-08-11"
+    
+    // Robustly extract year, month, day, and hour in Japan Standard Time (JST) regardless of server timezone
+    const jstFormatter = new Intl.DateTimeFormat('ja-JP', {
+      timeZone: 'Asia/Tokyo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      hour12: false
+    });
+    const parts = jstFormatter.formatToParts(now);
+    const year = parts.find(p => p.type === 'year')?.value;
+    const month = parts.find(p => p.type === 'month')?.value;
+    const day = parts.find(p => p.type === 'day')?.value;
+    const hour = parts.find(p => p.type === 'hour')?.value;
+
+    const todayStr = `${year}-${month}-${day}`;
+    const currentHour = parseInt(hour || '0', 10);
 
     for (const shop of shops) {
       // 1. Check for Daily Automated Posting
@@ -1650,9 +1666,14 @@ async function runBackgroundScheduler() {
   }
 }
 
-// Clear memory cache of already posted shops at midnight
+// Clear memory cache of already posted shops at midnight in JST
 setInterval(() => {
-  const currentHour = new Date().getHours();
+  const jstFormatter = new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo',
+    hour: '2-digit',
+    hour12: false
+  });
+  const currentHour = parseInt(jstFormatter.formatToParts(new Date()).find(p => p.type === 'hour')?.value || '0', 10);
   if (currentHour === 0) {
     alreadyPostedToday.clear();
     console.log('🧹 Cleared scheduler memory set for the new day.');
