@@ -289,6 +289,7 @@ export default function App() {
     }
   };
 
+  /*
   // Toggle Auto-reply ON/OFF status
   const handleToggleReply = async () => {
     if (!currentShop || !dashboard || isToggling) return;
@@ -315,6 +316,7 @@ export default function App() {
       setIsToggling(false);
     }
   };
+  */
 
   // Simulate daily posting and rollover slide
   const handleSimulateRollover = async () => {
@@ -1000,21 +1002,23 @@ export default function App() {
                     </p>
                   </div>
 
-                  {/* Smooth Animated Toggle */}
-                  <button
-                    type="button"
-                    onClick={handleToggleReply}
-                    disabled={isToggling}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      dashboard.replyActive ? 'bg-emerald-500' : 'bg-slate-300'
-                    }`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        dashboard.replyActive ? 'translate-x-5' : 'translate-x-0'
+                  {/* Read-Only Status Toggle (Changeable via Settings Tab) */}
+                  <div className="flex flex-col items-end gap-1">
+                    <div
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-default rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                        dashboard.replyActive ? 'bg-emerald-500' : 'bg-slate-300'
                       }`}
-                    />
-                  </button>
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          dashboard.replyActive ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </div>
+                    <span className="text-[8px] font-bold text-slate-400 whitespace-nowrap">
+                      ※設定タブで変更可能
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
