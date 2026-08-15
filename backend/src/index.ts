@@ -992,7 +992,13 @@ app.post('/api/shops/:shopId/test-line-alert', async (req, res) => {
 
     // Use our custom ReviewHandlerService to generate an apology draft with custom review prompt
     console.log(`🤖 Triggering simulated LINE notification alert for shop: ${shop.name}...`);
-    const result = await reviewHandler.handleNewReview(testReview, shop.name, shop.custom_review_prompt || undefined);
+    const result = await reviewHandler.handleNewReview(
+      testReview,
+      shop.name,
+      shop.custom_review_prompt || undefined,
+      false,
+      shop.line_user_id
+    );
 
     // Save this test review to the database so they can edit it in the UI!
     await prisma.reviewLogs.create({
@@ -1639,7 +1645,8 @@ async function syncReviewsFromGBP(shopId: string) {
             },
             shop.name,
             shop.custom_review_prompt || undefined,
-            shop.reply_active
+            shop.reply_active,
+            shop.line_user_id
           );
 
           // Save the review to our local database

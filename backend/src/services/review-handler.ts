@@ -61,7 +61,8 @@ export class ReviewHandlerService {
     review: ReviewEvent, 
     storeName: string, 
     customPrompt?: string,
-    replyActive: boolean = false
+    replyActive: boolean = false,
+    lineUserId?: string | null
   ): Promise<ReviewResponseResult> {
     console.log(`\n📬 [新着口コミ検知] 店舗: 「${storeName}」 | 投稿者: ${review.reviewerName} | 星数: ★${review.starRating}`);
     console.log(`💬 コメント: "${review.comment || '(本文なし)'}"`);
@@ -89,8 +90,8 @@ export class ReviewHandlerService {
         };
       } else {
         // 承認モード (LINEでオーナーへ承認依頼を送信)
-        console.log('� 自動返信「OFF」判定：店主様のLINEにAI返信下書きの承認通知を送信します。');
-        const userId = process.env.LINE_USER_ID;
+        console.log('💡 自動返信「OFF」判定：店主様のLINEにAI返信下書きの承認通知を送信します。');
+        const userId = lineUserId || process.env.LINE_USER_ID;
         if (this.lineClient && userId) {
           await this.sendLineAlert(userId, storeName, review, aiDraft, 'highRating');
         } else {
@@ -116,7 +117,7 @@ export class ReviewHandlerService {
     console.log(`🤖 AI謝罪下書き作成成功:\n------------------\n${aiDraft}\n------------------`);
 
     // 2. 店舗オーナーのLINEへ緊急プッシュアラートを送信
-    const userId = process.env.LINE_USER_ID;
+    const userId = lineUserId || process.env.LINE_USER_ID;
     if (this.lineClient && userId) {
       await this.sendLineAlert(userId, storeName, review, aiDraft, 'apology');
     } else {
