@@ -1403,20 +1403,36 @@ export default function App() {
                                 <div className="w-24 h-24 bg-slate-900/5 rounded-xl overflow-hidden border border-slate-200/60 shrink-0 shadow-sm">
                                   <img
                                     src={`${API_BASE.replace('/api', '')}/api/shops/${currentShop?.id}/drive-images/${d.imageFileId}/view`}
-                                    alt="投稿予定の写真"
+                                    alt={d.dayIndex === -1 ? "投稿済みの写真" : "投稿予定の写真"}
                                     className="object-cover w-full h-full hover:scale-105 transition-transform duration-200"
                                   />
                                 </div>
                                 <div className="text-[10px] text-slate-500 font-bold space-y-1.5 pt-1">
-                                  <span className="text-[9px] bg-brandBlue-50 text-brandBlue-700 border border-brandBlue-100/60 px-2 py-0.5 rounded-full font-black">
-                                    📸 投稿予定の写真
-                                  </span>
-                                  <p className="text-slate-700 font-extrabold text-[11px] leading-relaxed">
-                                    この下書きと一緒にGoogleマップへ投稿されます。
-                                  </p>
-                                  <p className="text-[10px] text-slate-400 font-normal leading-normal">
-                                    店舗オーナー用のGoogle Driveストックから、自動的に最適な画像が割り振られています。
-                                  </p>
+                                  {d.dayIndex === -1 ? (
+                                    <>
+                                      <span className="text-[9px] bg-emerald-50 text-emerald-700 border border-emerald-100/60 px-2 py-0.5 rounded-full font-black">
+                                        📸 投稿済みの写真
+                                      </span>
+                                      <p className="text-slate-700 font-extrabold text-[11px] leading-relaxed">
+                                        この画像と一緒にGoogleマップへ公開されました。
+                                      </p>
+                                      <p className="text-[10px] text-slate-400 font-normal leading-normal">
+                                        店舗オーナー用のGoogle Driveストックから、自動的に最適な画像が使用されました。
+                                      </p>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="text-[9px] bg-brandBlue-50 text-brandBlue-700 border border-brandBlue-100/60 px-2 py-0.5 rounded-full font-black">
+                                        📸 投稿予定の写真
+                                      </span>
+                                      <p className="text-slate-700 font-extrabold text-[11px] leading-relaxed">
+                                        この下書きと一緒にGoogleマップへ投稿されます。
+                                      </p>
+                                      <p className="text-[10px] text-slate-400 font-normal leading-normal">
+                                        店舗オーナー用のGoogle Driveストックから、自動的に最適な画像が割り振られています。
+                                      </p>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                             )}
