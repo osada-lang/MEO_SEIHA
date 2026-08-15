@@ -4,6 +4,7 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 import stream from 'stream';
 import { google } from 'googleapis';
+import { Client } from '@line/bot-sdk';
 import { prisma } from './services/db';
 import { ReviewHandlerService, ReviewEvent } from './services/review-handler';
 
@@ -12,6 +13,25 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// Initialize LINE Client for webhook and profile lookups
+let lineClient: Client | null = null;
+const lineAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+const lineSecret = process.env.LINE_CHANNEL_SECRET;
+if (lineAccessToken && lineSecret) {
+  lineClient = new Client({
+    channelAccessToken: lineAccessToken,
+    channelSecret: lineSecret,
+  });
+}
+
+// In-memory store for recent LINE senders to allow self-pairing
+interface RecentLineSender {
+  userId: string;
+  displayName: string;
+  timestamp: number;
+}
+const recentLineSenders = new Map<string, RecentLineSender>();
 
 // Enable robust CORS middleware for frontend deployments (Vercel, localhost, etc.)
 app.use((req, res, next) => {
@@ -91,7 +111,76 @@ let mockDriveFiles: MockFile[] = [];
 const reviewHandler = new ReviewHandlerService();
 
 // ==========================================
-// 🔑 Auth Endpoints
+// � LINE Messaging API Webhook & Self-Pairing
+// ==========================================
+
+// POST /api/line/webhook
+app.post('/api/line/webhook', async (req, res) => {
+  const events = req.body.events || [];
+  console.log(`📡 [LINE Webhook] Received ${events.length} events.`);
+
+  for (const event of events) {
+    // We only care about events from users (message, follow, etc.)
+    if (event.source && event.source.type === 'user') {
+      const userId = event.source.userId;
+      console.log(`👤 [LINE Webhook] Event from userId: ${userId}`);
+
+      try {
+        let displayName = 'LINEユーザー';
+        if (lineClient) {
+          // Fetch user profile from LINE API to get their display name
+          const profile = await lineClient.getProfile(userId);
+          displayName = profile.displayName || 'LINEユーザー';
+          console.log(`🌟 [LINE Webhook] Fetched user profile: ${displayName}`);
+        } else {
+          console.log('⚠️ [LINE Webhook] lineClient is not initialized. Using fallback display name.');
+        }
+
+        // Cache the sender with current timestamp
+        recentLineSenders.set(userId, {
+          userId,
+          displayName,
+          timestamp: Date.now(),
+        });
+
+        // 🌟 UX Enhancement: Auto-reply back to the user on their phone!
+        if (lineClient && event.type === 'message') {
+          try {
+            await lineClient.pushMessage(userId, {
+              type: 'text',
+              text: `🟢 MEO SEIHA連携用のLINEアカウントを検出しました！\n\nニックネーム: 「${displayName}」様\n\n管理画面に戻り、「このアカウントを連携する」ボタンを押して登録を完了してください。`,
+            });
+          } catch (replyErr: any) {
+            console.warn('⚠️ Failed to send auto-reply to user via pushMessage (might be a free tier limit or developer console permissions):', replyErr.message || replyErr);
+          }
+        }
+      } catch (err: any) {
+        console.error('❌ [LINE Webhook] Failed to process event:', err.message || err);
+      }
+    }
+  }
+
+  // Always return 200 OK to LINE immediately
+  return res.sendStatus(200);
+});
+
+// GET /api/line/recent-senders
+app.get('/api/line/recent-senders', (req, res) => {
+  const fifteenMinutesAgo = Date.now() - 15 * 60 * 1000;
+
+  // Clean up senders older than 15 minutes
+  for (const [userId, sender] of recentLineSenders.entries()) {
+    if (sender.timestamp < fifteenMinutesAgo) {
+      recentLineSenders.delete(userId);
+    }
+  }
+
+  const sendersArray = Array.from(recentLineSenders.values()).sort((a, b) => b.timestamp - a.timestamp);
+  return res.json({ success: true, senders: sendersArray });
+});
+
+// ==========================================
+// � Auth Endpoints
 // ==========================================
 
 // POST /api/auth/login
@@ -425,6 +514,7 @@ app.get('/api/shops/:shopId/settings', async (req, res) => {
       shopName: shop.name,
       replyActive: shop.reply_active,
       customReviewPrompt: shop.custom_review_prompt || '',
+      lineUserId: shop.line_user_id || '',
       keywords: {
         mainKeywords,
         subKeywords,
@@ -447,7 +537,7 @@ app.get('/api/shops/:shopId/settings', async (req, res) => {
 // POST /api/shops/:shopId/settings
 app.post('/api/shops/:shopId/settings', async (req, res) => {
   const { shopId } = req.params;
-  const { replyActive, customReviewPrompt, keywords } = req.body;
+  const { replyActive, customReviewPrompt, lineUserId, keywords } = req.body;
 
   try {
     // 1. Update Shop Profile details
@@ -456,6 +546,7 @@ app.post('/api/shops/:shopId/settings', async (req, res) => {
       data: {
         custom_review_prompt: customReviewPrompt,
         reply_active: typeof replyActive === 'boolean' ? replyActive : true,
+        line_user_id: lineUserId || null,
       }
     });
 

@@ -90,6 +90,7 @@ interface SettingsData {
   shopName: string;
   replyActive: boolean;
   customReviewPrompt: string;
+  lineUserId: string;
   keywords: {
     mainKeywords: string[];
     subKeywords: string[];
@@ -127,6 +128,8 @@ export default function App() {
   // Sub-actions states
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [isToggling, setIsToggling] = useState<boolean>(false);
+  const [recentSenders, setRecentSenders] = useState<{ userId: string; displayName: string; timestamp: number }[]>([]);
+  const [isDetectingLine, setIsDetectingLine] = useState<boolean>(false);
   const [messageBanner, setMessageBanner] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -450,6 +453,29 @@ export default function App() {
       showBanner('error', 'LINEテスト通知の送信に失敗しました。');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Fetch recent LINE message senders for self-pairing
+  const handleDetectLineSenders = async () => {
+    setIsDetectingLine(true);
+    try {
+      const res = await fetch(`${API_BASE}/line/recent-senders`);
+      const data = await res.json();
+      if (res.ok && data.senders) {
+        setRecentSenders(data.senders);
+        if (data.senders.length > 0) {
+          showBanner('success', `🌟 LINEの送信者を ${data.senders.length}件 検出しました！`);
+        } else {
+          showBanner('error', '直近15分以内に公式LINEへメッセージを送信したユーザーが見つかりません。');
+        }
+      } else {
+        showBanner('error', 'LINE送信者の検出に失敗しました。');
+      }
+    } catch (err) {
+      showBanner('error', '通信エラー：LINE送信者を検出できませんでした。');
+    } finally {
+      setIsDetectingLine(false);
     }
   };
 
@@ -1890,6 +1916,130 @@ export default function App() {
                         keywords: { ...settings.keywords, gurunaviUrl: e.target.value }
                       })}
                     />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* CARD: LINE Notification Auto-Pairing */}
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
+              <h2 className="text-base font-black text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+                <Send className="w-5 h-5 text-indigo-600" />
+                低評価アラート通知先 LINE連携
+              </h2>
+
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-black text-slate-400 tracking-wider uppercase">
+                    現在の登録LINEユーザーID
+                  </label>
+                  <input
+                    type="text"
+                    className="block w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold bg-slate-100 text-slate-600 focus:outline-none"
+                    placeholder="未連携（アラートは届きません）"
+                    value={settings.lineUserId || ''}
+                    readOnly
+                  />
+                  {settings.lineUserId ? (
+                    <p className="text-[10px] text-emerald-600 font-extrabold flex items-center gap-1">
+                      <span>●</span> 現在、このID宛てに低評価口コミの緊急LINEアラートが届きます。
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-rose-500 font-extrabold flex items-center gap-1">
+                      <span>●</span> LINE IDが未設定のため、通知アラートは送信されません。
+                    </p>
+                  )}
+                </div>
+
+                <div className="border-t border-slate-100 pt-3.5 space-y-3.5">
+                  <span className="block text-[11px] font-black text-slate-700 tracking-wider uppercase">
+                    📱 かんたん自動LINE連携 (セルフ登録)
+                  </span>
+
+                  <div className="flex md:flex-row flex-col gap-4 items-center bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                    {/* QR Code */}
+                    <div className="bg-white p-2.5 rounded-xl border border-slate-200/60 shrink-0 shadow-sm flex flex-col items-center justify-center">
+                      <img
+                        src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://line.me/R/ti/p/@714uobnv"
+                        alt="LINE QR"
+                        className="w-[100px] h-[100px]"
+                      />
+                      <span className="text-[8px] font-black text-slate-400 tracking-widest mt-1.5 uppercase">MEO SEIHA 公式</span>
+                    </div>
+
+                    <div className="text-[10px] text-slate-500 font-bold space-y-1.5">
+                      <p className="text-slate-800 font-extrabold text-[11px] leading-relaxed">
+                        【ステップ1】
+                      </p>
+                      <p className="leading-relaxed">
+                        上記のQRコードをスマートフォンでスキャンし、**「MEO SEIHA公式LINEアカウント」を友だち追加**してください。
+                      </p>
+                      <p className="text-slate-800 font-extrabold text-[11px] leading-relaxed pt-0.5">
+                        【ステップ2】
+                      </p>
+                      <p className="leading-relaxed">
+                        友だち追加後、その公式LINE宛てに**スタンプまたは適当な一言メッセージを送信**してください。
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-[10px] text-slate-400 font-bold leading-normal">
+                      【ステップ3】メッセージ送信後、以下のボタンを押してご自身のアカウントを自動検出してください。
+                    </p>
+                    <button
+                      type="button"
+                      disabled={isDetectingLine}
+                      onClick={handleDetectLineSenders}
+                      className="w-full bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 font-extrabold text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 active:scale-[0.98]"
+                    >
+                      {isDetectingLine ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-500" />
+                      ) : (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+                          LINE送信者を自動検出する
+                        </>
+                      )}
+                    </button>
+
+                    {recentSenders.length > 0 && (
+                      <div className="border border-indigo-100 rounded-xl bg-indigo-50/50 p-3 space-y-2 animate-fadeIn">
+                        <label className="block text-[9px] font-black text-indigo-500 uppercase tracking-wider leading-none">
+                          🌟 検出された直近の送信者 (15分以内)
+                        </label>
+                        <p className="text-[9px] text-slate-400 leading-normal font-bold">
+                          ご自身のアカウント（ニックネーム）を見つけたら、ボタンを押して連携してください。
+                        </p>
+                        <div className="divide-y divide-indigo-100/50 max-h-[140px] overflow-y-auto pr-1">
+                          {recentSenders.map((sender) => (
+                            <div key={sender.userId} className="flex items-center justify-between py-2 first:pt-0 last:pb-0">
+                              <div>
+                                <span className="text-xs font-black text-slate-800 block">
+                                  {sender.displayName} 様
+                                </span>
+                                <span className="text-[9px] text-slate-400 font-mono">
+                                  ID: {sender.userId.substring(0, 10)}...
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSettings({
+                                    ...settings,
+                                    lineUserId: sender.userId
+                                  });
+                                  showBanner('success', `連携先に「${sender.displayName} 様」を選択しました。設定を保存すると登録が確定します。`);
+                                }}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-extrabold py-1.5 px-3 rounded-lg transition-all"
+                              >
+                                このアカウントで連携する
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
