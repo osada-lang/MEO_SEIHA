@@ -820,7 +820,11 @@ app.delete('/api/shops/:shopId/drive-images/:fileId', async (req, res) => {
     return res.json({ success: true, fileId, isMock: false });
   } catch (error: any) {
     console.error('❌ Image deletion error:', error.message || error);
-    return res.status(500).json({ error: 'Google Driveからの画像削除に失敗しました。' });
+    const isPermissionError = error.message?.toLowerCase().includes('permission') || error.status === 403 || error.code === 403;
+    const errorMsg = isPermissionError
+      ? 'この画像は別のGoogleアカウントが所有しているため、システムから削除できません。本人のGoogleドライブから直接削除してください。'
+      : 'Google Driveからの画像削除に失敗しました。';
+    return res.status(isPermissionError ? 403 : 500).json({ error: errorMsg });
   }
 });
 

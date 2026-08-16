@@ -539,11 +539,13 @@ export default function App() {
         method: 'DELETE',
       });
 
+      const data = await res.json().catch(() => ({}));
+
       if (res.ok) {
         setPhotos(photos.filter((p: DriveImage) => p.id !== fileId));
         showBanner('success', `🗑️ 写真「${fileName}」をストックから削除しました。`);
       } else {
-        showBanner('error', '写真の削除に失敗しました。');
+        showBanner('error', data.error || '写真の削除に失敗しました。');
       }
     } catch (err) {
       showBanner('error', '通信エラー：削除できませんでした。');
