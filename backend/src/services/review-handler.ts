@@ -62,7 +62,8 @@ export class ReviewHandlerService {
     storeName: string, 
     customPrompt?: string,
     replyActive: boolean = false,
-    lineUserId?: string | null
+    lineUserId?: string | null,
+    shopId?: string
   ): Promise<ReviewResponseResult> {
     console.log(`\n📬 [新着口コミ検知] 店舗: 「${storeName}」 | 投稿者: ${review.reviewerName} | 星数: ★${review.starRating}`);
     console.log(`💬 コメント: "${review.comment || '(本文なし)'}"`);
@@ -93,7 +94,7 @@ export class ReviewHandlerService {
         console.log('💡 自動返信「OFF」判定：店主様のLINEにAI返信下書きの承認通知を送信します。');
         const userId = lineUserId || process.env.LINE_USER_ID;
         if (this.lineClient && userId) {
-          await this.sendLineAlert(userId, storeName, review, aiDraft, 'highRating');
+          await this.sendLineAlert(userId, storeName, review, aiDraft, 'highRating', shopId);
         } else {
           console.log('ℹ️ LINE_USER_IDが未設定、またはLINEクライアントが未初期化のため、LINE承認通知をスキップしました。');
         }
@@ -119,7 +120,7 @@ export class ReviewHandlerService {
     // 2. 店舗オーナーのLINEへ緊急プッシュアラートを送信
     const userId = lineUserId || process.env.LINE_USER_ID;
     if (this.lineClient && userId) {
-      await this.sendLineAlert(userId, storeName, review, aiDraft, 'apology');
+      await this.sendLineAlert(userId, storeName, review, aiDraft, 'apology', shopId);
     } else {
       console.log('ℹ️ LINE_USER_IDが未設定、またはLINEクライアントが未初期化のため、LINEアラート送信をスキップしました（ログのみ出力）。');
     }
@@ -291,11 +292,20 @@ export class ReviewHandlerService {
   /**
    * 店舗オーナー宛てに、マジックリンクと下書き文付きの緊急LINEアラートをプッシュ送信します
    */
-  private async sendLineAlert(userId: string, storeName: string, review: ReviewEvent, aiDraft: string, type: 'apology' | 'highRating'): Promise<void> {
+  private async sendLineAlert(
+    userId: string, 
+    storeName: string, 
+    review: ReviewEvent, 
+    aiDraft: string, 
+    type: 'apology' | 'highRating',
+    shopId?: string
+  ): Promise<void> {
     if (!this.lineClient) return;
 
-    // 店舗ごとに個別の確認・編集画面へジャンプする一時トークン（マジックリンク）の生成を模擬
-    const magicLink = `https://meo-seiha-dev.vercel.app/api/auth/magic-login?token=temp-mock-token-for-${review.reviewId}`;
+    // Generate real bypass magic login link!
+    const frontendUrl = process.env.FRONTEND_URL || 'https://meo-seiha-dev.vercel.app';
+    const loginToken = shopId ? `simulated_token_${shopId}_long` : `temp-mock-token-for-${review.reviewId}`;
+    const magicLink = `${frontendUrl}/?token=${loginToken}&tab=reviews`;
 
     let messageText = '';
     if (type === 'apology') {

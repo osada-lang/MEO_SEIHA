@@ -148,6 +148,24 @@ export default function App() {
     'THANXCREATE（直営店契約）': true
   });
 
+  // Parse URL parameters for magic login token and tab redirection on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlToken = urlParams.get('token');
+    const urlTab = urlParams.get('tab');
+
+    if (urlToken) {
+      localStorage.setItem('token', urlToken);
+      setToken(urlToken);
+      // Clean query parameters from URL for a clean address bar
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    if (urlTab === 'reviews') {
+      setActiveTab('reviews');
+    }
+  }, []);
+
   // Fetch shops list for master/admin accounts
   useEffect(() => {
     if (userRole === 'ADMIN' && token) {

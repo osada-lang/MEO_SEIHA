@@ -1001,7 +1001,8 @@ app.post('/api/shops/:shopId/test-line-alert', async (req, res) => {
       shop.name,
       shop.custom_review_prompt || undefined,
       false,
-      shop.line_user_id
+      shop.line_user_id,
+      shop.id
     );
 
     // Save this test review to the database so they can edit it in the UI!
@@ -1650,7 +1651,8 @@ async function syncReviewsFromGBP(shopId: string) {
             shop.name,
             shop.custom_review_prompt || undefined,
             shop.reply_active,
-            shop.line_user_id
+            shop.line_user_id,
+            shop.id
           );
 
           // Save the review to our local database
