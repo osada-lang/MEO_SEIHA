@@ -1358,9 +1358,17 @@ export default function App() {
                                     ? (dashboard.draftPosts.some(x => x.dayIndex === -1) ? '明日投稿予定' : '本日投稿予定')
                                     : d.dayIndex === 1
                                     ? (dashboard.draftPosts.some(x => x.dayIndex === -1) ? '明後日投稿予定' : '明日投稿予定')
-                                    : '明々後日投稿予定'}
+                                    : (dashboard.draftPosts.some(x => x.dayIndex === -1) ? '明々後日投稿予定' : '明後日投稿予定')}
                                 </span>
-                                <h4 className="text-xs font-black text-slate-800 mt-1.5">{d.title}</h4>
+                                <h4 className="text-xs font-black text-slate-800 mt-1.5">
+                                  {d.dayIndex === -1
+                                    ? '本日投稿済みの下書き'
+                                    : d.dayIndex === 0
+                                    ? (dashboard.draftPosts.some(x => x.dayIndex === -1) ? '明日投稿予定の下書き (Day 0)' : '本日投稿予定の下書き (Day 0)')
+                                    : d.dayIndex === 1
+                                    ? (dashboard.draftPosts.some(x => x.dayIndex === -1) ? '明後日投稿予定の下書き (Day 1)' : '明日投稿予定の下書き (Day 1)')
+                                    : (dashboard.draftPosts.some(x => x.dayIndex === -1) ? '明々後日投稿予定の下書き (Day 2)' : '明後日投稿予定の下書き (Day 2)')}
+                                </h4>
                               </div>
                               
                               {d.subKeywords && d.subKeywords.length > 0 && (
