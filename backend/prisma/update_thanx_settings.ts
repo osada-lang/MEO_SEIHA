@@ -13,10 +13,10 @@ async function main() {
     where: { id: shopId },
     data: {
       email: 'thanxcreate@gmail.com',
-      reply_active: true,
+      reply_active: existingShop ? existingShop.reply_active : true,
       google_drive_folder_id: existingShop?.google_drive_folder_id || '1AIgemm9-fvP-eLwP7p2p8Plja1mbOJtX',
       google_location_id: existingShop?.google_location_id || 'locations/3018418038085555463',
-      custom_review_prompt: '合同会社THANX CREATEのカスタマーサポートとして、極めて真摯にお詫びしてください。店舗様の売上向上に本気で伴走する企業として、サービス改善へ向けて早急に対応する熱い誠意を伝えてください。',
+      custom_review_prompt: existingShop ? existingShop.custom_review_prompt : '合同会社THANX CREATEのカスタマーサポートとして、極めて真摯にお詫びしてください。店舗様の売上向上に本気で伴走する企業として、サービス改善へ向けて早急に対応する熱い誠意を伝えてください。',
     },
   });
 
@@ -26,21 +26,21 @@ async function main() {
   await prisma.shopKeywords.upsert({
     where: { shop_id: shopId },
     update: {
-      main_keywords: JSON.stringify(['名古屋 MEO', 'MEO対策', 'Googleマップ集客', 'ローカルSEO', 'THANX CREATE']),
-      sub_keywords: JSON.stringify(['口コミ対策', 'GBP運用', 'マップ順位', '集客効果', '名古屋マーケティング', '店舗集客', '自動投稿', 'SNS連動', '口コミ返信', 'AI作成']),
-      fixed_footer: '店舗名: 合同会社THANX CREATE\n住所: 愛知県名古屋市中区栄1-23-29\nWeb: https://thanx-create.com',
-      custom_prompt: '親しみやすく誠実なトーンで。中小企業の店舗オーナー様に向けて、Web集客やMEO対策の有益なコツや店舗様の魅力について、専門家としての信頼感を持って発信してください。',
-      hp_url: existingKeywords?.hp_url || null,
-      tabelog_url: existingKeywords?.tabelog_url || null,
-      hotpepper_url: existingKeywords?.hotpepper_url || null,
-      gurunavi_url: existingKeywords?.gurunavi_url || null,
-      gbp_action_url: existingKeywords?.gbp_action_url || null,
+      main_keywords: existingKeywords ? existingKeywords.main_keywords : JSON.stringify(['名古屋 MEO', 'MEO対策', 'Googleマップ集客', 'ローカルSEO', 'THANX CREATE']),
+      sub_keywords: existingKeywords ? existingKeywords.sub_keywords : JSON.stringify(['口コミ対策', 'GBP運用', 'マップ順位', '集客効果', '名古屋マーケティング', '店舗集客', '自動投稿', 'SNS連動', '口コミ返信', 'AI作成']),
+      fixed_footer: existingKeywords ? existingKeywords.fixed_footer : null, // Default to blank/null
+      custom_prompt: existingKeywords ? existingKeywords.custom_prompt : '親しみやすく誠実なトーンで。中小企業の店舗オーナー様に向けて、Web集客やMEO対策の有益なコツや店舗様の魅力について、専門家としての信頼感を持って発信してください。',
+      hp_url: existingKeywords ? existingKeywords.hp_url : null,
+      tabelog_url: existingKeywords ? existingKeywords.tabelog_url : null,
+      hotpepper_url: existingKeywords ? existingKeywords.hotpepper_url : null,
+      gurunavi_url: existingKeywords ? existingKeywords.gurunavi_url : null,
+      gbp_action_url: existingKeywords ? existingKeywords.gbp_action_url : null,
     },
     create: {
       shop_id: shopId,
       main_keywords: JSON.stringify(['名古屋 MEO', 'MEO対策', 'Googleマップ集客', 'ローカルSEO', 'THANX CREATE']),
       sub_keywords: JSON.stringify(['口コミ対策', 'GBP運用', 'マップ順位', '集客効果', '名古屋マーケティング', '店舗集客', '自動投稿', 'SNS連動', '口コミ返信', 'AI作成']),
-      fixed_footer: '店舗名: 合同会社THANX CREATE\n住所: 愛知県名古屋市中区栄1-23-29\nWeb: https://thanx-create.com',
+      fixed_footer: null, // Default to blank as requested
       custom_prompt: '親しみやすく誠実なトーンで。中小企業の店舗オーナー様に向けて、Web集客やMEO対策の有益なコツや店舗様の魅力について、専門家としての信頼感を持って発信してください。',
       hp_url: null,
       tabelog_url: null,
