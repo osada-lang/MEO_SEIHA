@@ -1415,13 +1415,19 @@ async function executeDailyPostRollover(shopId: string) {
         ];
       }
 
+      // Append the fixed footer to the post text before publishing to GMB if configured
+      let finalPostText = publishedPost.text;
+      if (shop.keywords && shop.keywords.fixed_footer) {
+        finalPostText = `${finalPostText}\n\n${shop.keywords.fixed_footer}`;
+      }
+
       // Post to GMB v4 LocalPosts API
       const response = await oauth2Client.request({
         url: `https://mybusiness.googleapis.com/v4/${resolvedPath}/localPosts`,
         method: 'POST',
         data: {
           languageCode: 'ja-JP',
-          summary: publishedPost.text,
+          summary: finalPostText,
           topicType: 'STANDARD',
           ...(mediaPayload ? { media: mediaPayload } : {})
         }
