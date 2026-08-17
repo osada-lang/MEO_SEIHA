@@ -703,9 +703,11 @@ app.post('/api/shops/:shopId/drive-images/upload', async (req, res) => {
     return res.status(400).json({ error: '画像アップロードに必要なデータが不足しています。' });
   }
 
+  let shop = null;
+  let auth = null;
   try {
-    const shop = await prisma.shop.findUnique({ where: { id: shopId } });
-    const auth = getGoogleAuthClient();
+    shop = await prisma.shop.findUnique({ where: { id: shopId } });
+    auth = getGoogleAuthClient();
 
     if (!shop) {
       return res.status(404).json({ error: '店舗が見つかりませんでした。' });
@@ -768,7 +770,28 @@ app.post('/api/shops/:shopId/drive-images/upload', async (req, res) => {
     });
   } catch (error: any) {
     console.error('❌ Image upload error:', error.message || error);
-    // Graceful fallback to mock upload if Google Drive credentials or folder is invalid
+    
+    // If we have Google Drive Auth but the upload failed, do NOT fallback to mock silently.
+    // Return a clear, helpful error message to the user!
+    if (auth && shop) {
+      const folderId = shop.google_drive_folder_id || 'root';
+      const errorMsg = error.message || '';
+      const isFolderError = errorMsg.includes('File not found') || error.status === 404 || error.code === 404;
+      const isPermissionError = errorMsg.toLowerCase().includes('permission') || error.status === 403 || error.code === 403;
+      
+      let clientError = 'Googleドライブへのアップロードに失敗しました。';
+      if (isFolderError) {
+        clientError = `Googleドライブのフォルダが見つかりません。設定タブの「Google Drive フォルダID」（現在: "${folderId}"）が正しいか、またはフォルダがGoogleドライブのゴミ箱に削除されていないかご確認ください。`;
+      } else if (isPermissionError) {
+        clientError = `Googleドライブのフォルダ（ID: "${folderId}"）への書き込み権限がありません。Google Cloudのサービスアカウント、または認証アカウントに「共同編集者（編集者）」権限が付与されているかご確認ください。`;
+      } else {
+        clientError += ` (エラー詳細: ${errorMsg})`;
+      }
+      
+      return res.status(error.status || error.code || 400).json({ error: clientError });
+    }
+
+    // Only if we don't have Google Drive credentials at all, do we do the mock fallback
     try {
       const fileBuffer = Buffer.from(base64Data, 'base64');
       const dataUrl = `data:${mimeType};base64,${base64Data}`;
