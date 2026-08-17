@@ -227,12 +227,48 @@ app.get('/api/auth/me', async (req, res) => {
   }
 
   const token = authHeader.split(' ')[1];
-  const parts = token.split('_');
-  if (parts.length < 3 || parts[0] !== 'simulated' || parts[1] !== 'token') {
-    return res.status(401).json({ error: '無効な認証トークンです。' });
-  }
+  let shopId: string | null = null;
+  let newToken: string | null = null;
 
-  const shopId = parts.slice(2, -1).join('_'); // Reconstruct ID if it contains underscores
+  if (token.startsWith('simulated_token_')) {
+    const parts = token.split('_');
+    if (parts.length < 3 || parts[0] !== 'simulated' || parts[1] !== 'token') {
+      return res.status(401).json({ error: '無効な認証トークンです。' });
+    }
+    shopId = parts.slice(2, -1).join('_'); // Reconstruct ID if it contains underscores
+  } else {
+    // Treat as cryptographically secure one-time magic link token
+    try {
+      const dbToken = await prisma.magicLinkToken.findUnique({
+        where: { token: token },
+      });
+
+      if (!dbToken) {
+        return res.status(401).json({ error: '無効または存在しない認証トークンです。' });
+      }
+
+      if (dbToken.is_used) {
+        return res.status(401).json({ error: 'このマジックログインリンクは既に使用されています。' });
+      }
+
+      if (new Date() > dbToken.expires_at) {
+        return res.status(401).json({ error: 'このマジックログインリンクの有効期限（24時間）が切れています。' });
+      }
+
+      // Valid magic token! Mark as used immediately to burn it
+      await prisma.magicLinkToken.update({
+        where: { id: dbToken.id },
+        data: { is_used: true }
+      });
+
+      shopId = dbToken.shop_id;
+      newToken = `simulated_token_${shopId}_long`; // Rotated persistent session token
+      console.log(`🔥 [ワンタイムトークン認証成功] マジックリンクを無効化し、セッショントークンを発行しました。店舗ID: ${shopId}`);
+    } catch (dbErr: any) {
+      console.error('❌ Magic token lookup/use error:', dbErr.message || dbErr);
+      return res.status(500).json({ error: '認証処理中にエラーが発生しました。' });
+    }
+  }
 
   try {
     const shop = await prisma.shop.findUnique({
@@ -254,7 +290,8 @@ app.get('/api/auth/me', async (req, res) => {
         line_user_id: shop.line_user_id,
         reply_active: shop.reply_active,
         custom_review_prompt: shop.custom_review_prompt,
-      }
+      },
+      ...(newToken ? { newToken } : {})
     });
   } catch (error) {
     console.error('❌ Auth validation error:', error);
@@ -1487,11 +1524,14 @@ async function executeDailyPostRollover(shopId: string) {
         finalPostText = `${finalPostText}\n\n${shop.keywords.fixed_footer}`;
       }
 
-      // Ensure all single newlines are converted to double newlines (\n\n) so Google Maps
-      // preserves the line breaks, preventing Google's post engine from collapsing them.
+      // Normalize to \n first, trim individual lines to remove trailing spaces,
+      // and then join with CRLF (\r\n) which is the official specification for the
+      // Google Business Profile API to recognize and preserve line breaks without collapsing them.
       const normalizedText = finalPostText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-      const paragraphs = normalizedText.split('\n').map((line: string) => line.trim());
-      const gbpPostText = paragraphs.filter((line: string) => line !== '').join('\n\n');
+      const gbpPostText = normalizedText
+        .split('\n')
+        .map((line: string) => line.trim())
+        .join('\r\n');
 
       // Determine if there is an action button (Call to Action) to attach (e.g. LP or Campaign URL)
       let callToActionPayload = undefined;
@@ -1822,6 +1862,12 @@ async function runBackgroundScheduler() {
     const todayStr = `${year}-${month}-${day}`;
     const currentHour = parseInt(hour || '0', 10);
 
+    // Clear alreadyPostedToday memory cache at midnight JST
+    if (currentHour === 0) {
+      alreadyPostedToday.clear();
+      console.log('🧹 Midnight JST reached: Cleared scheduler memory set for the new day.');
+    }
+
     for (const shop of shops) {
       // 1. Check for Daily Automated Posting
       if (shop.keywords) {
@@ -1908,23 +1954,35 @@ async function runBackgroundScheduler() {
   }
 }
 
-// Clear memory cache of already posted shops at midnight in JST
-setInterval(() => {
-  const jstFormatter = new Intl.DateTimeFormat('ja-JP', {
-    timeZone: 'Asia/Tokyo',
-    hour: '2-digit',
-    hour12: false
-  });
-  const currentHour = parseInt(jstFormatter.formatToParts(new Date()).find(p => p.type === 'hour')?.value || '0', 10);
-  if (currentHour === 0) {
-    alreadyPostedToday.clear();
-    console.log('🧹 Cleared scheduler memory set for the new day.');
-  }
-}, 60 * 60 * 1000); // Check every hour
+// POST /api/batch/trigger-scheduler
+// Securely triggers the background scheduler cycle. Protected by CRON_SECRET API Key.
+app.post('/api/batch/trigger-scheduler', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  const cronSecret = process.env.CRON_SECRET;
 
-// Run background scheduler cycle every 15 minutes
-const FIFTEEN_MINUTES = 15 * 60 * 1000;
-setInterval(runBackgroundScheduler, FIFTEEN_MINUTES);
+  if (!cronSecret) {
+    console.error('❌ CRON_SECRET environment variable is not set on the server!');
+    return res.status(500).json({ error: 'サーバー側でCronセキュリティキーが設定されていません。' });
+  }
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: '認証キーが提供されていません。' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  if (token !== cronSecret) {
+    return res.status(403).json({ error: '認証キーが一致しません。アクセスが拒否されました。' });
+  }
+
+  console.log('📡 [セキュアCronリクエスト受信] バックグラウンドバッチ同期スケジュールを起動します...');
+  
+  // Non-blocking asynchronous execution to prevent HTTP timeout on the caller
+  runBackgroundScheduler()
+    .then(() => console.log('✅ Secure background scheduler execution completed successfully.'))
+    .catch((err) => console.error('❌ Secure background scheduler execution failed:', err.message || err));
+
+  return res.json({ success: true, message: 'バックグラウンドバッチ処理（自動投稿＆口コミ同期）を正常に起動しました！' });
+});
 
 // Start express server
 app.listen(port, () => {
@@ -1932,11 +1990,6 @@ app.listen(port, () => {
   console.log(`🚀 MEO SEIHA - Express API Server running on: http://localhost:${port}`);
   console.log(`📅 Started on: ${new Date().toLocaleString()}`);
   console.log(`================================================================================\n`);
-
-  // Run initial scheduler check immediately upon server startup
-  setTimeout(() => {
-    runBackgroundScheduler().catch(err => console.error('❌ Startup scheduler run failed:', err));
-  }, 5000); // Wait 5 seconds after startup to let initialization settle
 
   // Master Account (thanxcreate.gbp@gmail.com) Automatic Initialization / Sync
   setTimeout(async () => {

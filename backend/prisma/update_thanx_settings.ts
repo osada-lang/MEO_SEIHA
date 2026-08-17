@@ -3,6 +3,12 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
+  const shopCount = await prisma.shop.count();
+  if (shopCount > 0) {
+    console.log('ℹ️ Database already has shops configured. Skipping settings initialization to protect custom settings.');
+    return;
+  }
+
   console.log('🔄 Updating database settings for 合同会社THANX CREATE...');
 
   const shopId = 'thanx-create-uuid';

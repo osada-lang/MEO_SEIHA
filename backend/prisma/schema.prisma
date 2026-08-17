@@ -28,6 +28,7 @@ model Shop {
   keywords              ShopKeywords?
   templates             ReplyTemplates?
   review_logs           ReviewLogs[]
+  magic_tokens          MagicLinkToken[]
 }
 
 model ShopKeywords {
@@ -75,4 +76,15 @@ model ReviewLogs {
   created_at          DateTime @default(now())
 
   shop                Shop     @relation(fields: [shop_id], references: [id], onDelete: Cascade)
+}
+
+model MagicLinkToken {
+  id         String   @id @default(uuid())
+  token      String   @unique
+  shop_id    String
+  expires_at DateTime
+  is_used    Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  shop       Shop     @relation(fields: [shop_id], references: [id], onDelete: Cascade)
 }

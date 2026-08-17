@@ -2,6 +2,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Client } from '@line/bot-sdk';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import { PrismaClient } from '@prisma/client';
+import * as crypto from 'crypto';
 
 // Load .env
 dotenv.config({ path: path.join(__dirname, '../../.env') });
@@ -304,7 +306,29 @@ export class ReviewHandlerService {
 
     // Generate real bypass magic login link!
     const frontendUrl = process.env.FRONTEND_URL || 'https://meo-seiha-dev.vercel.app';
-    const loginToken = shopId ? `simulated_token_${shopId}_long` : `temp-mock-token-for-${review.reviewId}`;
+    let loginToken = shopId ? `simulated_token_${shopId}_long` : `temp-mock-token-for-${review.reviewId}`;
+
+    if (shopId) {
+      try {
+        const prisma = new PrismaClient();
+        const secureToken = crypto.randomBytes(32).toString('hex'); // 64 chars secure hex token
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // Expires in 24 hours
+
+        await prisma.magicLinkToken.create({
+          data: {
+            token: secureToken,
+            shop_id: shopId,
+            expires_at: expiresAt,
+          }
+        });
+        loginToken = secureToken;
+        console.log(`🔑 [ワンタイムトークン発行] 店舗ID: ${shopId} | トークン: ${secureToken}`);
+        await prisma.$disconnect();
+      } catch (dbErr: any) {
+        console.error('❌ Failed to save secure magic token to DB:', dbErr.message || dbErr);
+      }
+    }
+
     const magicLink = `${frontendUrl}/?token=${loginToken}&tab=reviews`;
 
     let messageText = '';
