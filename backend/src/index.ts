@@ -600,9 +600,11 @@ app.post('/api/shops/:shopId/settings', async (req, res) => {
 app.get('/api/shops/:shopId/drive-images', async (req, res) => {
   const { shopId } = req.params;
 
+  let shop = null;
+  let auth = null;
   try {
-    const shop = await prisma.shop.findUnique({ where: { id: shopId } });
-    const auth = getGoogleAuthClient();
+    shop = await prisma.shop.findUnique({ where: { id: shopId } });
+    auth = getGoogleAuthClient();
 
     if (!shop) {
       return res.status(404).json({ error: '店舗が見つかりませんでした。' });
@@ -639,7 +641,28 @@ app.get('/api/shops/:shopId/drive-images', async (req, res) => {
     return res.json({ files, isMock: false });
   } catch (error: any) {
     console.error('❌ Failed to fetch Google Drive files:', error.message || error);
-    // Graceful fallback to mock images so client never crashes
+    
+    // If we have Google Drive Auth but the list failed, do NOT fallback to mock silently.
+    // Return a clear, helpful error message to the user!
+    if (auth && shop) {
+      const folderId = shop.google_drive_folder_id || 'root';
+      const errorMsg = error.message || '';
+      const isFolderError = errorMsg.includes('File not found') || error.status === 404 || error.code === 404;
+      const isPermissionError = errorMsg.toLowerCase().includes('permission') || error.status === 403 || error.code === 403;
+      
+      let clientError = 'Googleドライブから画像を同期できませんでした。';
+      if (isFolderError) {
+        clientError = `Googleドライブのフォルダが見つかりません。設定タブの「Google Drive フォルダID」（現在: "${folderId}"）が正しいか、またはフォルダがGoogleドライブのゴミ箱に削除されていないかご確認ください。`;
+      } else if (isPermissionError) {
+        clientError = `Googleドライブのフォルダ（ID: "${folderId}"）への読み込み権限がありません。Google Cloudのサービスアカウント、または認証アカウントに「共同編集者（編集者または閲覧者）」権限がお目当てのフォルダに付与されているかご確認ください。`;
+      } else {
+        clientError += ` (エラー詳細: ${errorMsg})`;
+      }
+      
+      return res.status(error.status || error.code || 400).json({ error: clientError });
+    }
+
+    // Graceful fallback to mock images only if Google Drive is not configured
     return res.json({ files: mockDriveFiles, isMock: true, error: 'Google Drive接続エラーのため、モック画像を表示しています。' });
   }
 });
@@ -1470,6 +1493,16 @@ async function executeDailyPostRollover(shopId: string) {
       const paragraphs = normalizedText.split('\n').map((line: string) => line.trim());
       const gbpPostText = paragraphs.filter((line: string) => line !== '').join('\n\n');
 
+      // Determine if there is an action button (Call to Action) to attach (e.g. LP or Campaign URL)
+      let callToActionPayload = undefined;
+      if (shop.keywords && shop.keywords.gbp_action_url) {
+        console.log(`🔗 Attaching Call-to-Action button to GBP post: ${shop.keywords.gbp_action_url}`);
+        callToActionPayload = {
+          actionType: 'LEARN_MORE',
+          url: shop.keywords.gbp_action_url
+        };
+      }
+
       // Post to GMB v4 LocalPosts API
       const response = await oauth2Client.request({
         url: `https://mybusiness.googleapis.com/v4/${resolvedPath}/localPosts`,
@@ -1478,7 +1511,8 @@ async function executeDailyPostRollover(shopId: string) {
           languageCode: 'ja-JP',
           summary: gbpPostText,
           topicType: 'STANDARD',
-          ...(mediaPayload ? { media: mediaPayload } : {})
+          ...(mediaPayload ? { media: mediaPayload } : {}),
+          ...(callToActionPayload ? { callToAction: callToActionPayload } : {})
         }
       });
 

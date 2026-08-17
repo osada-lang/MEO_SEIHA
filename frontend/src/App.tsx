@@ -227,27 +227,35 @@ export default function App() {
       try {
         if (activeTab === 'dashboard') {
           const res = await fetch(`${API_BASE}/shops/${currentShop.id}/dashboard`);
+          const data = await res.json().catch(() => ({}));
           if (res.ok) {
-            const data = await res.json();
             setDashboard(data);
+          } else {
+            showBanner('error', data.error || 'ダッシュボードの同期に失敗しました。');
           }
         } else if (activeTab === 'settings') {
           const res = await fetch(`${API_BASE}/shops/${currentShop.id}/settings`);
+          const data = await res.json().catch(() => ({}));
           if (res.ok) {
-            const data = await res.json();
             setSettings(data);
+          } else {
+            showBanner('error', data.error || '設定の同期に失敗しました。');
           }
         } else if (activeTab === 'photos') {
           const res = await fetch(`${API_BASE}/shops/${currentShop.id}/drive-images`);
+          const data = await res.json().catch(() => ({}));
           if (res.ok) {
-            const data = await res.json();
             setPhotos(data.files);
+          } else {
+            showBanner('error', data.error || '画像ストックの同期に失敗しました。');
           }
         } else if (activeTab === 'reviews') {
           const res = await fetch(`${API_BASE}/shops/${currentShop.id}/reviews`);
+          const data = await res.json().catch(() => ({}));
           if (res.ok) {
-            const data = await res.json();
             setReviews(data.reviews);
+          } else {
+            showBanner('error', data.error || '口コミの同期に失敗しました。');
           }
         }
       } catch (err) {
@@ -1205,7 +1213,7 @@ export default function App() {
                   {/* 📍 Quick Links */}
                   <div className="pt-1.5">
                     <a
-                      href={dashboard.gbpActionUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dashboard.shopName)}`}
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dashboard.shopName)}`}
                       target="_blank"
                       rel="noreferrer"
                       className="bg-slate-50 hover:bg-indigo-50 border border-slate-200/80 hover:border-indigo-200 p-3.5 rounded-xl transition-all flex items-center justify-between text-left group w-full"
