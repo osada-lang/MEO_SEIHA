@@ -1444,13 +1444,19 @@ async function executeDailyPostRollover(shopId: string) {
         finalPostText = `${finalPostText}\n\n${shop.keywords.fixed_footer}`;
       }
 
+      // Ensure all single newlines are converted to double newlines (\n\n) so Google Maps
+      // preserves the line breaks, preventing Google's post engine from collapsing them.
+      const normalizedText = finalPostText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      const paragraphs = normalizedText.split('\n').map((line: string) => line.trim());
+      const gbpPostText = paragraphs.filter((line: string) => line !== '').join('\n\n');
+
       // Post to GMB v4 LocalPosts API
       const response = await oauth2Client.request({
         url: `https://mybusiness.googleapis.com/v4/${resolvedPath}/localPosts`,
         method: 'POST',
         data: {
           languageCode: 'ja-JP',
-          summary: finalPostText,
+          summary: gbpPostText,
           topicType: 'STANDARD',
           ...(mediaPayload ? { media: mediaPayload } : {})
         }
