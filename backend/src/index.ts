@@ -310,7 +310,7 @@ app.get('/api/shops/:shopId/dashboard', async (req, res) => {
       try {
         const drive = google.drive({ version: 'v3', auth });
         const driveRes = await drive.files.list({
-          q: `parents in '${shop.google_drive_folder_id || 'root'}' and (mimeType = 'image/jpeg' or mimeType = 'image/png') and trashed = false`,
+          q: `parents in '${shop.google_drive_folder_id || 'root'}' and (mimeType = 'image/jpeg' or mimeType = 'image/png' or mimeType = 'image/jpg') and trashed = false`,
           fields: 'files(id, name)',
           pageSize: 30,
         });
@@ -619,7 +619,7 @@ app.get('/api/shops/:shopId/drive-images', async (req, res) => {
 
     console.log(`📂 Scanning Google Drive folder: ${folderId}...`);
     const driveRes = await drive.files.list({
-      q: `parents in '${folderId}' and (mimeType = 'image/jpeg' or mimeType = 'image/png') and trashed = false`,
+      q: `parents in '${folderId}' and (mimeType = 'image/jpeg' or mimeType = 'image/png' or mimeType = 'image/jpg') and trashed = false`,
       pageSize: 30,
       fields: 'files(id, name, mimeType, size, createdTime)',
     });
@@ -715,6 +715,26 @@ app.post('/api/shops/:shopId/drive-images/upload', async (req, res) => {
 
     // Safe base64 binary decoding
     const fileBuffer = Buffer.from(base64Data, 'base64');
+
+    // STRICT VALIDATION: GBP only supports JPEG and PNG formats.
+    const lowerMime = mimeType.toLowerCase();
+    const lowerName = fileName.toLowerCase();
+    const isJpg = lowerMime === 'image/jpeg' || lowerMime === 'image/jpg' || lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg');
+    const isPng = lowerMime === 'image/png' || lowerName.endsWith('.png');
+
+    if (!isJpg && !isPng) {
+      return res.status(400).json({
+        error: 'Googleマイビジネスの仕様上、MEO投稿に利用できる画像は JPEG (.jpg/.jpeg) または PNG (.png) 形式のみです。HEIC (iPhone標準形式) や WebP, GIF 形式の画像はアップロードできません。事前にJPEG/PNGに変換してから再度お試しください。'
+      });
+    }
+
+    // STRICT VALIDATION: GMB has a file size limit of 5MB
+    const maxBytes = 5 * 1024 * 1024; // 5MB
+    if (fileBuffer.length > maxBytes) {
+      return res.status(400).json({
+        error: 'Googleマイビジネスの仕様上、アップロードできる画像の最大サイズは 5 MB です。これより容量の小さい画像を使用するか、画像を圧縮してからアップロードしてください。'
+      });
+    }
 
     if (!auth) {
       // Simulate mock upload
@@ -1263,7 +1283,7 @@ app.post('/api/shops/:shopId/draft-posts/regenerate', async (req, res) => {
       try {
         const drive = google.drive({ version: 'v3', auth });
         const driveRes = await drive.files.list({
-          q: `parents in '${shop.google_drive_folder_id}' and (mimeType = 'image/jpeg' or mimeType = 'image/png') and trashed = false`,
+          q: `parents in '${shop.google_drive_folder_id}' and (mimeType = 'image/jpeg' or mimeType = 'image/png' or mimeType = 'image/jpg') and trashed = false`,
           fields: 'files(id, name)',
           pageSize: 30,
         });
@@ -1477,7 +1497,7 @@ async function executeDailyPostRollover(shopId: string) {
     try {
       const drive = google.drive({ version: 'v3', auth });
       const driveRes = await drive.files.list({
-        q: `parents in '${shop.google_drive_folder_id}' and (mimeType = 'image/jpeg' or mimeType = 'image/png') and trashed = false`,
+        q: `parents in '${shop.google_drive_folder_id}' and (mimeType = 'image/jpeg' or mimeType = 'image/png' or mimeType = 'image/jpg') and trashed = false`,
         fields: 'files(id, name)',
         pageSize: 30,
       });
