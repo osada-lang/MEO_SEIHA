@@ -2173,13 +2173,30 @@ export default function App() {
                   <p className="text-xs font-extrabold text-slate-700">口コミ履歴がありません</p>
                 </div>
               ) : (
-                reviews.map((review: ReviewLog) => {
-                  const isPendingReply = !review.is_auto_replied;
+                [...reviews]
+                  .sort((a, b) => {
+                    const aPending = !a.is_auto_replied;
+                    const bPending = !b.is_auto_replied;
 
-                  // Sync local text input state dynamically
-                  if (isPendingReply && editingReplyText[review.review_id] === undefined) {
-                    editingReplyText[review.review_id] = review.reply_text || '';
-                  }
+                    // 1. 未返信（承認待ち）の口コミを最優先で一番上に表示
+                    if (aPending && !bPending) return -1;
+                    if (!aPending && bPending) return 1;
+
+                    // 2. 両方が未返信（承認待ち）の場合：古いものほど上（昇順 / ASC）
+                    if (aPending && bPending) {
+                      return new Date(a.create_time).getTime() - new Date(b.create_time).getTime();
+                    }
+
+                    // 3. 両方が返信済みの場合：新しいものほど上（降順 / DESC）
+                    return new Date(b.create_time).getTime() - new Date(a.create_time).getTime();
+                  })
+                  .map((review: ReviewLog) => {
+                    const isPendingReply = !review.is_auto_replied;
+
+                    // Sync local text input state dynamically
+                    if (isPendingReply && editingReplyText[review.review_id] === undefined) {
+                      editingReplyText[review.review_id] = review.reply_text || '';
+                    }
 
                   return (
                     <div

@@ -1622,15 +1622,6 @@ async function syncReviewsFromGBP(shopId: string) {
         const comment = cleanGoogleComment(gReview.comment || '');
         const createTime = gReview.createTime || new Date().toISOString();
 
-        // SAFETY FILTER: Ignore any reviews posted prior to the store registration date (shop.created_at)
-        const reviewCreateDate = new Date(createTime);
-        const shopCreatedDate = new Date(shop.created_at);
-
-        if (reviewCreateDate < shopCreatedDate) {
-          console.log(`⚠️ Review by ${reviewerName} is older than shop creation (${reviewCreateDate.toISOString()} < ${shopCreatedDate.toISOString()}). Skipping historical pre-integration review.`);
-          continue;
-        }
-
         // Check if this review is already saved in our database
         const existing = await prisma.reviewLogs.findUnique({
           where: { review_id: reviewId }
@@ -1639,6 +1630,32 @@ async function syncReviewsFromGBP(shopId: string) {
         if (!existing) {
           console.log(`🆕 Detected brand NEW review from Google for "${shop.name}": Rating=${starRating} | Reviewer="${reviewerName}"`);
 
+          const reviewCreateDate = new Date(createTime);
+          const shopCreatedDate = new Date(shop.created_at);
+
+          // SAFETY FILTER: If the review was posted prior to store registration,
+          // we import it silently as a historical review to show in the UI, but do NOT trigger any LINE alerts or AI reply drafts!
+          if (reviewCreateDate < shopCreatedDate) {
+            console.log(`📥 Silently importing historical pre-integration review by ${reviewerName} (Date: ${reviewCreateDate.toISOString()} < Shop Registration: ${shopCreatedDate.toISOString()}).`);
+            const replyComment = gReview.reviewReply?.comment || null;
+
+            await prisma.reviewLogs.create({
+              data: {
+                shop_id: shop.id,
+                review_id: reviewId,
+                reviewer_name: reviewerName,
+                star_rating: starRating,
+                comment,
+                reply_text: replyComment,
+                is_auto_replied: !!replyComment, // If already replied on Google, mark true, else false
+                requires_alert: false,
+                create_time: new Date(createTime),
+              }
+            });
+            continue;
+          }
+
+          // Otherwise, it is a real-time new review received after registration!
           // Handle new review using ReviewHandlerService (pass shop.reply_active)
           const handleResult = await reviewHandler.handleNewReview(
             {
@@ -1665,6 +1682,7 @@ async function syncReviewsFromGBP(shopId: string) {
               comment,
               reply_text: handleResult.replyText,
               is_auto_replied: false,
+              requires_alert: handleResult.requiresAlert,
               create_time: new Date(createTime), // Robust Date parsing
             }
           });
