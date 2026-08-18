@@ -1136,7 +1136,8 @@ app.post('/api/shops/:shopId/test-line-alert', async (req, res) => {
 async function generateSingleDraft(
   shop: any,
   dayIndex: number,
-  driveFiles?: { id: string, name: string }[]
+  driveFiles?: { id: string, name: string }[],
+  forceTextOnly: boolean = false
 ): Promise<{ text: string, subKeywords: string[], imageFileId: string | null }> {
   const mainKeywords: string[] = JSON.parse(shop.keywords?.main_keywords || '[]');
   const subKeywords: string[] = JSON.parse(shop.keywords?.sub_keywords || '[]');
@@ -1147,8 +1148,12 @@ async function generateSingleDraft(
   let imageTheme: string | null = null;
   const selectedSubKeywords: string[] = [];
 
+  const imageCount = driveFiles ? driveFiles.length : 0;
+  const isAlternating = imageCount >= 1 && imageCount < 10;
+  const shouldBeTextOnly = forceTextOnly || (isAlternating && dayIndex % 2 === 1);
+
   // Match sub-keywords with Google Drive files for prioritizing image themes
-  if (driveFiles && driveFiles.length > 0) {
+  if (driveFiles && driveFiles.length > 0 && !shouldBeTextOnly) {
     let matchedFile: any = null;
     let matchedKeyword: string = '';
 
@@ -1621,8 +1626,13 @@ async function executeDailyPostRollover(shopId: string) {
     imageFileId: draft2.imageFileId || null,
   };
 
+  // Check if we are in alternating mode (1 to 9 images) to alternate Day 2 image assignment based on Day 1 (draft2) status
+  const imageCount = driveFilesList.length;
+  const isAlternating = imageCount >= 1 && imageCount < 10;
+  const forceTextOnlyForDay2 = isAlternating ? !!draft2.imageFileId : false;
+
   // 3. Generate a brand new Day 2 draft using Gemini AI!
-  const newDay2Raw = await generateSingleDraft(shop, 2, driveFilesList);
+  const newDay2Raw = await generateSingleDraft(shop, 2, driveFilesList, forceTextOnlyForDay2);
   const nextDay2 = {
     dayIndex: 2,
     title: '明々後日投稿予定の下書き (Day 2)',
