@@ -469,15 +469,11 @@ app.get('/api/shops/:shopId/dashboard', async (req, res) => {
       }
     }
 
-    // Resolve draft posts with fallback images first
-    const resolvedDrafts = draftPostsArr.map((d: any, idx: number) => {
-      let imageFileId = d.imageFileId || null;
-      if (!imageFileId && postingMode !== 'TEXT_ONLY') {
-        imageFileId = driveFileIds[idx] || null;
-      }
+    // Resolve draft posts strictly using database-stored image assignments
+    const resolvedDrafts = draftPostsArr.map((d: any) => {
       return {
         ...d,
-        imageFileId
+        imageFileId: d.imageFileId || null
       };
     });
 
