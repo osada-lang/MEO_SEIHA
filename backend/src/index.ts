@@ -1520,14 +1520,24 @@ async function executeDailyPostRollover(shopId: string) {
         finalPostText = `${finalPostText}\n\n${shop.keywords.fixed_footer}`;
       }
 
-      // Normalize to \n first, trim individual lines to remove trailing spaces,
-      // and then join with CRLF (\r\n) which is the official specification for the
-      // Google Business Profile API to recognize and preserve line breaks without collapsing them.
-      const normalizedText = finalPostText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      // 1. Normalize all line breaks to standard \n (LF)
+      let normalizedText = finalPostText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+      // 2. Prevent spam filtering and layout collapse by limiting contiguous newlines to maximum of 2 (i.e. maximum 1 empty line)
+      normalizedText = normalizedText.replace(/\n{3,}/g, '\n\n');
+
+      // 3. Process each line to prevent Google's Maps/Search engine from collapsing empty lines into a wall of text.
+      // We append a full-width space and a zero-width space (\u200B) to empty lines so Google's renderer sees them as active paragraphs.
       const gbpPostText = normalizedText
         .split('\n')
-        .map((line: string) => line.trim())
-        .join('\r\n');
+        .map((line: string) => {
+          const trimmed = line.trim();
+          if (trimmed === '') {
+            return '　\u200B'; // Full-width Japanese space + Zero-width invisible space
+          }
+          return trimmed;
+        })
+        .join('\n'); // Standard LF join
 
       // Determine if there is an action button (Call to Action) to attach (e.g. LP or Campaign URL)
       let callToActionPayload = undefined;
