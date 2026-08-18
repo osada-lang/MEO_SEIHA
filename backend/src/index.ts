@@ -1517,7 +1517,9 @@ async function executeDailyPostRollover(shopId: string) {
       // Append the fixed footer to the post text before publishing to GMB if configured
       let finalPostText = publishedPost.text;
       if (shop.keywords && shop.keywords.fixed_footer) {
-        finalPostText = `${finalPostText}\n\n${shop.keywords.fixed_footer}`;
+        // We prepend a solid visual divider line (━━━━━━━━━━━━━━━━) to structurally isolate the footer.
+        // Google's parser cannot merge symbol glyphs into standard prose, forcing a clean footer layout.
+        finalPostText = `${finalPostText}\n\n━━━━━━━━━━━━━━━━\n${shop.keywords.fixed_footer}`;
       }
 
       // 1. Normalize all line breaks to standard \n (LF)
