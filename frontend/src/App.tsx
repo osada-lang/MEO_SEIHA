@@ -1985,27 +1985,58 @@ export default function App() {
                 低評価アラート通知先 LINE連携
               </h2>
 
-              <div className="space-y-3">
-                <div className="space-y-1.5">
+              <div className="space-y-3.5">
+                <div className="space-y-2">
                   <label className="block text-[11px] font-black text-slate-400 tracking-wider uppercase">
-                    現在の登録LINEユーザーID
+                    現在の登録LINEユーザーID（最大3名）
                   </label>
-                  <input
-                    type="text"
-                    className="block w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold bg-slate-100 text-slate-600 focus:outline-none"
-                    placeholder="未連携（アラートは届きません）"
-                    value={settings.lineUserId || ''}
-                    readOnly
-                  />
-                  {settings.lineUserId ? (
-                    <p className="text-[10px] text-emerald-600 font-extrabold flex items-center gap-1">
-                      <span>●</span> 現在、このID宛てに低評価口コミの緊急LINEアラートが届きます。
-                    </p>
-                  ) : (
-                    <p className="text-[10px] text-rose-500 font-extrabold flex items-center gap-1">
-                      <span>●</span> LINE IDが未設定のため、通知アラートは送信されません。
-                    </p>
-                  )}
+                  {(() => {
+                    const registeredIds = settings.lineUserId ? settings.lineUserId.split(',').map(id => id.trim()).filter(Boolean) : [];
+                    
+                    if (registeredIds.length === 0) {
+                      return (
+                        <div className="bg-rose-50/50 border border-rose-100 rounded-xl p-3 text-center">
+                          <p className="text-[10px] text-rose-500 font-extrabold flex items-center justify-center gap-1">
+                            <span>●</span> LINE IDが未設定のため、アラートは送信されません。
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-2">
+                        {registeredIds.map((id, idx) => (
+                          <div key={idx} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-2.5">
+                            <div className="flex flex-col">
+                              <span className="text-[9px] font-black text-indigo-500 uppercase">
+                                連携先 {idx + 1}
+                              </span>
+                              <span className="text-[11px] font-mono font-bold text-slate-700 mt-0.5">
+                                {id}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newIds = registeredIds.filter((_, i) => i !== idx);
+                                setSettings({
+                                  ...settings,
+                                  lineUserId: newIds.join(',')
+                                });
+                                showBanner('success', `連携先 ${idx + 1} を削除しました。設定を保存すると確定します。`);
+                              }}
+                              className="text-[10px] font-black text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg py-1 px-2.5 transition-all"
+                            >
+                              削除
+                            </button>
+                          </div>
+                        ))}
+                        <p className="text-[10px] text-emerald-600 font-extrabold flex items-center gap-1 pt-1">
+                          <span>●</span> 現在、上記のID宛てに低評価口コミの緊急LINEアラートが届きます。
+                        </p>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="border-t border-slate-100 pt-3.5 space-y-3.5">
@@ -2082,11 +2113,21 @@ export default function App() {
                               <button
                                 type="button"
                                 onClick={() => {
+                                  const registeredIds = settings.lineUserId ? settings.lineUserId.split(',').map(id => id.trim()).filter(Boolean) : [];
+                                  if (registeredIds.includes(sender.userId)) {
+                                    showBanner('error', 'このアカウントは既に登録されています。');
+                                    return;
+                                  }
+                                  if (registeredIds.length >= 3) {
+                                    showBanner('error', '連携先は最大3名まで登録可能です。不要な連携先を削除してから追加してください。');
+                                    return;
+                                  }
+                                  const newIds = [...registeredIds, sender.userId];
                                   setSettings({
                                     ...settings,
-                                    lineUserId: sender.userId
+                                    lineUserId: newIds.join(',')
                                   });
-                                  showBanner('success', `連携先に「${sender.displayName} 様」を選択しました。設定を保存すると登録が確定します。`);
+                                  showBanner('success', `連携先に「${sender.displayName} 様」を追加しました。設定を保存すると登録が確定します。`);
                                 }}
                                 className="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-extrabold py-1.5 px-3 rounded-lg transition-all"
                               >

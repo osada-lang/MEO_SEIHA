@@ -1145,67 +1145,24 @@ async function generateSingleDraft(
   const hpUrl = shop.keywords?.hp_url || '';
 
   let imageFileId: string | null = null;
-  let imageTheme: string | null = null;
   const selectedSubKeywords: string[] = [];
 
   const imageCount = driveFiles ? driveFiles.length : 0;
   const isAlternating = imageCount >= 1 && imageCount < 10;
   const shouldBeTextOnly = forceTextOnly || (isAlternating && dayIndex % 2 === 1);
 
-  // Match sub-keywords with Google Drive files for prioritizing image themes
+  // Pick a random image from driveFiles if available and not text-only (independent of text generation)
   if (driveFiles && driveFiles.length > 0 && !shouldBeTextOnly) {
-    let matchedFile: any = null;
-    let matchedKeyword: string = '';
+    const randomIndex = Math.floor(Math.random() * driveFiles.length);
+    const selectedFile = driveFiles[randomIndex];
+    imageFileId = selectedFile.id || null;
+  }
 
-    for (const kw of subKeywords) {
-      const cleanKw = kw.trim();
-      if (!cleanKw) continue;
-
-      const found = driveFiles.find(f => {
-        const cleanFileName = (f.name || '').toLowerCase();
-        return cleanFileName.includes(cleanKw.toLowerCase());
-      });
-
-      if (found) {
-        matchedFile = found;
-        matchedKeyword = kw;
-        break; // Take the first matching subkeyword to lock down the priority
-      }
-    }
-
-    if (matchedFile) {
-      imageFileId = matchedFile.id;
-      // Strip extension like .jpg or .png to get the pure theme
-      imageTheme = matchedFile.name.replace(/\.[^/.]+$/, "");
-      selectedSubKeywords.push(matchedKeyword);
-
-      // Select 1 to 2 other random sub-keywords
-      const remaining = subKeywords.filter(k => k !== matchedKeyword);
-      if (remaining.length > 0) {
-        const shuffled = [...remaining].sort(() => 0.5 - Math.random());
-        const count = Math.floor(Math.random() * 2) + 1; // 1 or 2 more
-        selectedSubKeywords.push(...shuffled.slice(0, count));
-      }
-    } else {
-      // Fallback: Default ordered file selection by day index
-      const defaultFile = driveFiles[dayIndex % driveFiles.length];
-      imageFileId = defaultFile.id || null;
-      imageTheme = defaultFile.name ? defaultFile.name.replace(/\.[^/.]+$/, "") : null;
-
-      // Select 2 to 3 completely randomized sub-keywords
-      if (subKeywords.length > 0) {
-        const shuffled = [...subKeywords].sort(() => 0.5 - Math.random());
-        const count = Math.floor(Math.random() * 2) + 2; // 2 or 3
-        selectedSubKeywords.push(...shuffled.slice(0, Math.min(count, shuffled.length)));
-      }
-    }
-  } else {
-    // Standard randomized sub-keyword selection if no images are available
-    if (subKeywords.length > 0) {
-      const shuffled = [...subKeywords].sort(() => 0.5 - Math.random());
-      const count = Math.floor(Math.random() * 2) + 2; // 2 or 3
-      selectedSubKeywords.push(...shuffled.slice(0, Math.min(count, shuffled.length)));
-    }
+  // Standard randomized sub-keyword selection (independent of image files)
+  if (subKeywords.length > 0) {
+    const shuffled = [...subKeywords].sort(() => 0.5 - Math.random());
+    const count = Math.floor(Math.random() * 2) + 2; // 2 or 3
+    selectedSubKeywords.push(...shuffled.slice(0, Math.min(count, shuffled.length)));
   }
 
   const geminiApiKey = process.env.GEMINI_API_KEY;
@@ -1225,16 +1182,6 @@ async function generateSingleDraft(
     weekday: 'long'
   });
 
-  let imagePromptContext = '';
-  if (imageTheme) {
-    imagePromptContext = `
-    【本日の投稿で使用する写真の被写体・メニュー名】: "${imageTheme}"
-    ※この写真は今回の投稿とセットでGoogleマップに掲載されます。写真と投稿文のミスマッチを100%防ぐため、必ずこの写真に写っている料理やサービス、被写体（"${imageTheme}"）の特徴や魅力、おすすめポイントなどにフォーカスした宣伝・紹介文をメインに執筆してください。（写真と無関係なおしらせや別メニューの紹介は絶対に書かないでください）`;
-  } else {
-    imagePromptContext = `
-    ※現在画像ストックがありません。店舗全体の魅力、季節に合わせたお気軽な案内など、汎用的なおしらせ宣伝文を作成してください。`;
-  }
-
   const prompt = `
     あなたは店舗「${shop.name}」のオーナー代理として、Googleマップ（MEO）用の日替わり投稿テキスト（おしらせ/最新情報）を自動作成してください。
 
@@ -1242,7 +1189,6 @@ async function generateSingleDraft(
     - 店舗名: ${shop.name}
     - ターゲット層へのアピール・トーンマナー: ${customPrompt || '親しみやすく誠実なトーン。'}
     - 今日の日付: ${todayJp}
-    ${imagePromptContext}
 
     【作成の絶対ルール（厳守してください）】
     1. 毎回異なる構成・書き出し:

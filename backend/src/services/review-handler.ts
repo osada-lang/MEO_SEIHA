@@ -94,9 +94,12 @@ export class ReviewHandlerService {
       } else {
         // 承認モード (LINEでオーナーへ承認依頼を送信)
         console.log('💡 自動返信「OFF」判定：店主様のLINEにAI返信下書きの承認通知を送信します。');
-        const userId = lineUserId || process.env.LINE_USER_ID;
-        if (this.lineClient && userId) {
-          await this.sendLineAlert(userId, storeName, review, aiDraft, 'highRating', shopId);
+        const usersStr = lineUserId || process.env.LINE_USER_ID || '';
+        const userIds = usersStr.split(',').map(id => id.trim()).filter(Boolean);
+        if (this.lineClient && userIds.length > 0) {
+          for (const uId of userIds) {
+            await this.sendLineAlert(uId, storeName, review, aiDraft, 'highRating', shopId);
+          }
         } else {
           console.log('ℹ️ LINE_USER_IDが未設定、またはLINEクライアントが未初期化のため、LINE承認通知をスキップしました。');
         }
@@ -120,9 +123,12 @@ export class ReviewHandlerService {
     console.log(`🤖 AI謝罪下書き作成成功:\n------------------\n${aiDraft}\n------------------`);
 
     // 2. 店舗オーナーのLINEへ緊急プッシュアラートを送信
-    const userId = lineUserId || process.env.LINE_USER_ID;
-    if (this.lineClient && userId) {
-      await this.sendLineAlert(userId, storeName, review, aiDraft, 'apology', shopId);
+    const usersStr = lineUserId || process.env.LINE_USER_ID || '';
+    const userIds = usersStr.split(',').map(id => id.trim()).filter(Boolean);
+    if (this.lineClient && userIds.length > 0) {
+      for (const uId of userIds) {
+        await this.sendLineAlert(uId, storeName, review, aiDraft, 'apology', shopId);
+      }
     } else {
       console.log('ℹ️ LINE_USER_IDが未設定、またはLINEクライアントが未初期化のため、LINEアラート送信をスキップしました（ログのみ出力）。');
     }
