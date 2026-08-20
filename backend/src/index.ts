@@ -1750,6 +1750,7 @@ async function syncReviewsFromGBP(shopId: string) {
 
           // Otherwise, it is a real-time new review received after registration!
           // Handle new review using ReviewHandlerService (pass shop.reply_active)
+          console.log(`📡 [syncReviewsFromGBP] Calling handleNewReview with shop.reply_active = ${shop.reply_active} | line_user_id = "${shop.line_user_id || ''}"`);
           const handleResult = await reviewHandler.handleNewReview(
             {
               reviewId,
@@ -1765,8 +1766,10 @@ async function syncReviewsFromGBP(shopId: string) {
             shop.id
           );
 
+          console.log(`📡 [syncReviewsFromGBP] handleNewReview returned requiresAlert = ${handleResult.requiresAlert} | isAutoReplied = ${handleResult.isAutoReplied}`);
+
           // Save the review to our local database
-          await prisma.reviewLogs.create({
+          const savedReview = await prisma.reviewLogs.create({
             data: {
               shop_id: shop.id,
               review_id: reviewId,
@@ -1779,6 +1782,7 @@ async function syncReviewsFromGBP(shopId: string) {
               create_time: new Date(createTime), // Robust Date parsing
             }
           });
+          console.log(`📡 [syncReviewsFromGBP] Saved review to database: ID = ${savedReview.review_id} | is_auto_replied = ${savedReview.is_auto_replied} | requires_alert = ${savedReview.requires_alert}`);
         }
       }
     }
