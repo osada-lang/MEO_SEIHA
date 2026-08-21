@@ -1959,6 +1959,28 @@ app.listen(port, () => {
   console.log(`📅 Started on: ${new Date().toLocaleString()}`);
   console.log(`================================================================================\n`);
 
+  // ⏱️ Start Local Background Scheduler Fallback (Every 10 minutes & 15 seconds after startup)
+  console.log('⏱️ [Internal Scheduler] Initializing internal fallback scheduler (10-minute intervals)...');
+  setInterval(async () => {
+    console.log('⏰ [Internal Scheduler] Executing automatic background sync cycle...');
+    try {
+      await runBackgroundScheduler();
+      console.log('✅ [Internal Scheduler] Completed background sync cycle successfully.');
+    } catch (err: any) {
+      console.error('❌ [Internal Scheduler] Background sync cycle failed:', err.message || err);
+    }
+  }, 10 * 60 * 1000);
+
+  setTimeout(async () => {
+    console.log('⏰ [Internal Scheduler] Executing initial startup background sync...');
+    try {
+      await runBackgroundScheduler();
+      console.log('✅ [Internal Scheduler] Completed initial startup background sync.');
+    } catch (err: any) {
+      console.error('❌ [Internal Scheduler] Initial startup background sync failed:', err.message || err);
+    }
+  }, 15 * 1000);
+
   // Master Account (thanxcreate.gbp@gmail.com) Automatic Initialization / Sync
   setTimeout(async () => {
     try {
