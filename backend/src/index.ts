@@ -2061,6 +2061,25 @@ app.listen(port, () => {
         where: { id: 'thanx-create-uuid' },
         data: { agency_name: 'THANXCREATE' }
       });
+
+      // Initialize Agency X (osada@jira-chi.net)
+      const agencyX = await prisma.shop.upsert({
+        where: { email: 'osada@jira-chi.net' },
+        update: {
+          name: '代理店X',
+          password: 'osada@jira-chi.net',
+          role: 'AGENCY',
+          agency_name: '代理店X',
+        },
+        create: {
+          name: '代理店X',
+          email: 'osada@jira-chi.net',
+          password: 'osada@jira-chi.net',
+          role: 'AGENCY',
+          agency_name: '代理店X',
+        }
+      });
+      console.log(`✅ Agency X Account configured successfully! (Email: ${agencyX.email}, Role: ${agencyX.role})`);
     } catch (dbErr: any) {
       console.error('❌ Failed to initialize Master Account:', dbErr.message || dbErr);
     }
