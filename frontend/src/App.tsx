@@ -114,8 +114,8 @@ export default function App() {
   const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
 
   // Authentication Form
-  const [email, setEmail] = useState<string>('thanxcreate@gmail.com'); // Default value for testing
-  const [password, setPassword] = useState<string>('password');
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
   const [rememberMe, setRememberMe] = useState<boolean>(true);
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -166,9 +166,9 @@ export default function App() {
     }
   }, []);
 
-  // Fetch shops list for master/admin accounts
+  // Fetch shops list for master/admin/agency accounts
   useEffect(() => {
-    if (userRole === 'ADMIN' && token) {
+    if ((userRole === 'ADMIN' || userRole === 'AGENCY') && token) {
       const fetchShops = async () => {
         try {
           const res = await fetch(`${API_BASE}/shops`, {
@@ -202,7 +202,7 @@ export default function App() {
         if (res.ok) {
           const data = await res.json();
           setCurrentShop(data.shop);
-          setIsViewingShop(data.shop.role !== 'ADMIN');
+          setIsViewingShop(data.shop.role !== 'ADMIN' && data.shop.role !== 'AGENCY');
           if (data.newToken) {
             console.log('🔄 Magic token successfully exchanged for standard session token.');
             localStorage.setItem('token', data.newToken);
@@ -301,7 +301,7 @@ export default function App() {
         setUserRole(data.shop.role);
         setCurrentShop(data.shop);
         setActiveTab('dashboard');
-        setIsViewingShop(data.shop.role !== 'ADMIN');
+        setIsViewingShop(data.shop.role !== 'ADMIN' && data.shop.role !== 'AGENCY');
       } else {
         setAuthError(data.error || 'ログインに失敗しました。');
       }
@@ -900,46 +900,6 @@ export default function App() {
               </div>
             </form>
 
-            <div className="border-t border-slate-100 pt-6 space-y-3">
-              <span className="block text-center text-xs font-bold text-stripeInk-mute uppercase tracking-widest">
-                💡 テスト用ログインアカウント
-              </span>
-              <div className="grid grid-cols-1 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmail('admin@meo-seiha.com');
-                    setPassword('password');
-                  }}
-                  className="w-full bg-slate-50 hover:bg-stripeIndigo-50 border border-slate-200 hover:border-stripeIndigo-200 text-stripeInk-secondary font-bold text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-between group"
-                >
-                  <span>MEO SEIHA運営本部 (管理者)</span>
-                  <span className="text-[10px] bg-purple-100 text-purple-700 px-2.5 py-0.5 rounded-full font-bold">ADMIN</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmail('thanxcreate.gbp@gmail.com');
-                    setPassword('password');
-                  }}
-                  className="w-full bg-slate-50 hover:bg-stripeIndigo-50 border border-slate-200 hover:border-stripeIndigo-200 text-stripeInk-secondary font-bold text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-between group"
-                >
-                  <span>合同会社THANX CREATE (マスター)</span>
-                  <span className="text-[10px] bg-indigo-600 text-white px-2.5 py-0.5 rounded-full font-bold">MASTER</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEmail('thanxcreate@gmail.com');
-                    setPassword('password');
-                  }}
-                  className="w-full bg-slate-50 hover:bg-stripeIndigo-50 border border-slate-200 hover:border-stripeIndigo-200 text-stripeInk-secondary font-bold text-xs py-2.5 px-3 rounded-xl transition-all flex items-center justify-between"
-                >
-                  <span>合同会社THANX CREATE (店舗オーナー)</span>
-                  <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2.5 py-0.5 rounded-full font-bold">OWNER</span>
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -947,9 +907,9 @@ export default function App() {
   }
 
   // ==========================================
-  // 👑 Master Account Contracted Shops List Screen (ADMIN)
+  // 👑 Master / Agency Account Contracted Shops List Screen (ADMIN / AGENCY)
   // ==========================================
-  if (token && currentShop && userRole === 'ADMIN' && !isViewingShop) {
+  if (token && currentShop && (userRole === 'ADMIN' || userRole === 'AGENCY') && !isViewingShop) {
     // Group shopsList by agency name
     const groupedShops: { [agency: string]: ShopProfile[] } = {};
     const filteredShops = shopsList.filter(shop =>
@@ -984,13 +944,19 @@ export default function App() {
             <div className="flex items-center gap-3">
               <img src="/logo_bk.png" alt="MEO SEIHA" className="h-9 w-auto object-contain" />
               <div className="border-l border-slate-200 pl-3">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider leading-none">MEO SEIHA マスターコントロール</p>
-                <h1 className="text-sm font-black text-slate-900 leading-none mt-1.5">契約店舗・代理店一覧</h1>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider leading-none">
+                  {userRole === 'ADMIN' ? 'MEO SEIHA マスターコントロール' : 'MEO SEIHA 代理店コントロール'}
+                </p>
+                <h1 className="text-sm font-black text-slate-900 leading-none mt-1.5">
+                  {userRole === 'ADMIN' ? '契約店舗・代理店一覧' : '管理顧客店舗一覧'}
+                </h1>
               </div>
             </div>
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
-                <p className="text-xs font-black text-slate-800 leading-none">👑 {currentShop.name}</p>
+                <p className="text-xs font-black text-slate-800 leading-none">
+                  {userRole === 'ADMIN' ? `👑 ${currentShop.name}` : `🏢 ${currentShop.name}`}
+                </p>
                 <p className="text-[9px] text-slate-400 font-bold mt-1 truncate max-w-[150px]">{currentShop.email}</p>
               </div>
               <button
@@ -1116,7 +1082,7 @@ export default function App() {
           <div className="hidden md:block text-right">
             <p className="text-xs font-black text-slate-900 leading-tight">{currentShop.name}</p>
             <p className="text-[10px] text-slate-500 font-bold">
-              {userRole === 'ADMIN' ? '👑 マスター管理者' : '店舗オーナー'}
+              {userRole === 'ADMIN' ? '👑 マスター管理者' : (userRole === 'AGENCY' ? '🏢 代理店管理者' : '店舗オーナー')}
             </p>
           </div>
           <button
@@ -1149,8 +1115,8 @@ export default function App() {
       <div className="flex-1 flex flex-col sm:pl-60">
         {/* 🚀 Active Screen Container */}
         <main className="flex-1 max-w-md lg:max-w-6xl w-full mx-auto px-4 py-5 space-y-5">
-          {/* Master Account Shop back button (Mobile) */}
-          {userRole === 'ADMIN' && isViewingShop && (
+          {/* Master / Agency Account Shop back button (Mobile) */}
+          {(userRole === 'ADMIN' || userRole === 'AGENCY') && isViewingShop && (
             <button
               onClick={() => {
                 setIsViewingShop(false);
@@ -1162,15 +1128,15 @@ export default function App() {
               className="bg-indigo-50 border border-indigo-100 rounded-2xl p-3.5 text-xs font-black text-indigo-700 flex items-center justify-center gap-1.5 shadow-sm sm:hidden w-full no-print"
             >
               <ArrowLeft className="w-4.5 h-4.5" />
-              契約店舗一覧に戻る (管理者)
+              店舗一覧に戻る
             </button>
           )}
 
-          {/* Master Account Shop Switcher (Mobile) */}
-          {userRole === 'ADMIN' && shopsList.length > 0 && (
+          {/* Master / Agency Account Shop Switcher (Mobile) */}
+          {(userRole === 'ADMIN' || userRole === 'AGENCY') && shopsList.length > 0 && (
             <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-3.5 space-y-2 shadow-sm sm:hidden no-print">
               <label className="block text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none">
-                👑 マスター店舗切替 (ADMIN)
+                {userRole === 'ADMIN' ? '👑 マスター店舗切替 (ADMIN)' : '🏢 代理店店舗切替 (AGENCY)'}
               </label>
               <div className="relative mt-1">
                 <select
@@ -2506,8 +2472,8 @@ export default function App() {
       {/* 🖥️ Desktop sidebar or global side menu for wide monitors */}
       <aside className="hidden sm:flex fixed top-16 left-0 bottom-0 w-60 bg-white border-r border-slate-200/80 p-4 flex-col justify-between shadow-sm z-30 no-print">
         <div className="space-y-2">
-          {/* Master Account back button */}
-          {userRole === 'ADMIN' && (
+          {/* Master / Agency Account back button */}
+          {(userRole === 'ADMIN' || userRole === 'AGENCY') && (
             <button
               onClick={() => {
                 setIsViewingShop(false);
@@ -2519,15 +2485,15 @@ export default function App() {
               className="w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center gap-3 transition-all bg-indigo-50 border border-indigo-100/60 text-indigo-700 hover:bg-indigo-100 mb-2 shadow-sm"
             >
               <ArrowLeft className="w-4.5 h-4.5" />
-              契約店舗一覧に戻る
+              店舗一覧に戻る
             </button>
           )}
 
-          {/* Master Account Shop Switcher (Desktop) */}
-          {userRole === 'ADMIN' && shopsList.length > 0 && (
+          {/* Master / Agency Account Shop Switcher (Desktop) */}
+          {(userRole === 'ADMIN' || userRole === 'AGENCY') && shopsList.length > 0 && (
             <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-3.5 space-y-2 mb-4 shadow-sm">
               <label className="block text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none">
-                👑 マスター店舗切替 (ADMIN)
+                {userRole === 'ADMIN' ? '👑 マスター店舗切替 (ADMIN)' : '🏢 代理店店舗切替 (AGENCY)'}
               </label>
               <div className="relative mt-1">
                 <select
@@ -2616,7 +2582,7 @@ export default function App() {
 
         <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 space-y-1">
           <p className="text-[10px] font-black text-slate-400 uppercase leading-none">
-            {userRole === 'ADMIN' ? '👑 マスターアカウント' : 'ログインアカウント'}
+            {userRole === 'ADMIN' ? '👑 マスターアカウント' : (userRole === 'AGENCY' ? '🏢 代理店アカウント' : 'ログインアカウント')}
           </p>
           <p className="text-xs font-black text-slate-800 leading-tight pt-1 truncate" title={currentShop.name}>{currentShop.name}</p>
           <p className="text-[9px] text-slate-400 font-bold truncate" title={currentShop.email}>{currentShop.email}</p>
