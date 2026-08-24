@@ -1250,7 +1250,7 @@ export default function App() {
                   <div className="flex items-start justify-between gap-4 text-xs font-bold border-t border-slate-50 pt-3">
                     <span className="text-slate-400 uppercase">画像ストック状況</span>
                     <span className={`font-black text-right ${dashboard.imageCount > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                      {dashboard.imageCount > 0 ? `${dashboard.imageCount}枚（画像自動連携中）` : '0枚（テキストのみ投稿）'}
+                      {dashboard.imageCount > 0 ? (dashboard.imageCount >= 100 ? '100枚以上（画像自動連携中）' : `${dashboard.imageCount}枚（画像自動連携中）`) : '0枚（テキストのみ投稿）'}
                     </span>
                   </div>
                 </div>
@@ -1622,7 +1622,7 @@ export default function App() {
             {/* Photos Grid */}
             <div className="space-y-2.5">
               <span className="text-xs font-black text-slate-400 block uppercase tracking-wider">
-                現在のストック写真一覧 ({photos.length}枚)
+                現在のストック写真一覧 ({photos.length >= 100 ? '100枚以上' : `${photos.length}枚`})
               </span>
 
               {isLoading ? (
