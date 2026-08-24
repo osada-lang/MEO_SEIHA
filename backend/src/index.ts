@@ -396,7 +396,7 @@ app.get('/api/shops/:shopId/dashboard', async (req, res) => {
         const driveRes = await drive.files.list({
           q: `parents in '${shop.google_drive_folder_id || 'root'}' and (mimeType = 'image/jpeg' or mimeType = 'image/png' or mimeType = 'image/jpg') and trashed = false`,
           fields: 'files(id, name)',
-          pageSize: 100,
+          pageSize: 1000,
         });
         if (driveRes.data.files) {
           imageCount = driveRes.data.files.length;
@@ -702,7 +702,7 @@ app.get('/api/shops/:shopId/drive-images', async (req, res) => {
     console.log(`📂 Scanning Google Drive folder: ${folderId}...`);
     const driveRes = await drive.files.list({
       q: `parents in '${folderId}' and (mimeType = 'image/jpeg' or mimeType = 'image/png' or mimeType = 'image/jpg') and trashed = false`,
-      pageSize: 100,
+      pageSize: 1000,
       fields: 'files(id, name, mimeType, size, createdTime)',
     });
 
@@ -1346,7 +1346,7 @@ app.post('/api/shops/:shopId/draft-posts/regenerate', async (req, res) => {
         const driveRes = await drive.files.list({
           q: `parents in '${shop.google_drive_folder_id}' and (mimeType = 'image/jpeg' or mimeType = 'image/png' or mimeType = 'image/jpg') and trashed = false`,
           fields: 'files(id, name)',
-          pageSize: 100,
+          pageSize: 1000,
         });
         if (driveRes.data.files) {
           driveFilesList = driveRes.data.files.map((f: any) => ({ id: f.id || '', name: f.name || '' }));
@@ -1586,7 +1586,7 @@ async function executeDailyPostRollover(shopId: string) {
       const driveRes = await drive.files.list({
         q: `parents in '${shop.google_drive_folder_id}' and (mimeType = 'image/jpeg' or mimeType = 'image/png' or mimeType = 'image/jpg') and trashed = false`,
         fields: 'files(id, name)',
-        pageSize: 100,
+        pageSize: 1000,
       });
       if (driveRes.data.files) {
         driveFilesList = driveRes.data.files.map((f: any) => ({ id: f.id || '', name: f.name || '' }));
