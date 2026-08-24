@@ -986,6 +986,12 @@ app.get('/api/shops/:shopId/reviews', async (req, res) => {
     // Dynamically fetch and sync latest reviews from GBP in real-time!
     await syncReviewsFromGBP(shopId);
 
+    const shop = await prisma.shop.findUnique({
+      where: { id: shopId },
+      select: { created_at: true }
+    });
+    const shopCreatedAt = shop?.created_at ? new Date(shop.created_at).getTime() : Date.now();
+
     const reviews = await prisma.reviewLogs.findMany({
       where: { shop_id: shopId },
       orderBy: { create_time: 'desc' },
@@ -993,7 +999,8 @@ app.get('/api/shops/:shopId/reviews', async (req, res) => {
 
     const cleanedReviews = reviews.map(r => ({
       ...r,
-      comment: cleanGoogleComment(r.comment)
+      comment: cleanGoogleComment(r.comment),
+      is_pre_integration: new Date(r.create_time).getTime() < shopCreatedAt
     }));
 
     return res.json({ reviews: cleanedReviews });

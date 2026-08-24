@@ -83,6 +83,7 @@ interface ReviewLog {
   requires_alert: boolean;
   escalation_triggered: boolean;
   create_time: string;
+  is_pre_integration?: boolean;
 }
 
 interface SettingsData {
@@ -2260,9 +2261,12 @@ export default function App() {
                                   : 'bg-indigo-100 text-indigo-700 border border-indigo-200 animate-pulse'
                                 )
                               )
-                              : (review.star_rating >= 3
-                                ? 'bg-indigo-50 text-indigo-700 border border-indigo-100'
-                                : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                              : (review.is_pre_integration
+                                ? 'bg-slate-100 text-slate-500 border border-slate-200'
+                                : (review.star_rating >= 3
+                                  ? 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                                  : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                )
                               )
                           }`}>
                             {isPendingReply
@@ -2273,7 +2277,10 @@ export default function App() {
                                   : '承認待ち (保留中)'
                                 )
                               )
-                              : (review.star_rating >= 3 ? '自動送信完了' : '手動送信完了')
+                              : (review.is_pre_integration
+                                ? '導入前返信済'
+                                : (review.star_rating >= 3 ? '自動送信完了' : '手動送信完了')
+                              )
                             }
                           </span>
 
