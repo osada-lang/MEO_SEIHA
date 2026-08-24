@@ -2254,11 +2254,14 @@ export default function App() {
                         <div className="flex items-center gap-2">
                           <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
                             isPendingReply
-                              ? (review.star_rating <= 2
-                                ? 'bg-rose-100 text-rose-700 border border-rose-200 animate-pulse'
-                                : (dashboard?.replyActive
-                                  ? 'bg-amber-100 text-amber-700 border border-amber-200 animate-pulse'
-                                  : 'bg-indigo-100 text-indigo-700 border border-indigo-200 animate-pulse'
+                              ? (review.is_pre_integration
+                                ? 'bg-slate-100 text-slate-700 border border-slate-300 animate-pulse'
+                                : (review.star_rating <= 2
+                                  ? 'bg-rose-100 text-rose-700 border border-rose-200 animate-pulse'
+                                  : (dashboard?.replyActive
+                                    ? 'bg-amber-100 text-amber-700 border border-amber-200 animate-pulse'
+                                    : 'bg-indigo-100 text-indigo-700 border border-indigo-200 animate-pulse'
+                                  )
                                 )
                               )
                               : (review.is_pre_integration
@@ -2270,11 +2273,14 @@ export default function App() {
                               )
                           }`}>
                             {isPendingReply
-                              ? (review.star_rating <= 2
-                                ? '承認待ち (保留中)'
-                                : (dashboard?.replyActive
-                                  ? '自動送信待ち (1時間後)'
-                                  : '承認待ち (保留中)'
+                              ? (review.is_pre_integration
+                                ? '導入前未返信'
+                                : (review.star_rating <= 2
+                                  ? '承認待ち (保留中)'
+                                  : (dashboard?.replyActive
+                                    ? '自動送信待ち (1時間後)'
+                                    : '承認待ち (保留中)'
+                                  )
                                 )
                               )
                               : (review.is_pre_integration

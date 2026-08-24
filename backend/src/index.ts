@@ -1781,10 +1781,29 @@ async function syncReviewsFromGBP(shopId: string) {
           const shopCreatedDate = new Date(shop.created_at);
 
           // SAFETY FILTER: If the review was posted prior to store registration,
-          // we import it silently as a historical review to show in the UI, but do NOT trigger any LINE alerts or AI reply drafts!
+          // we import it silently as a historical review to show in the UI, but do NOT trigger any LINE alerts or automatic posts.
+          // For unreplied historical reviews, we prepare an AI reply draft so the owner can approve it manually!
           if (reviewCreateDate < shopCreatedDate) {
             console.log(`📥 Silently importing historical pre-integration review by ${reviewerName} (Date: ${reviewCreateDate.toISOString()} < Shop Registration: ${shopCreatedDate.toISOString()}).`);
             const replyComment = gReview.reviewReply?.comment || null;
+
+            let aiDraft = replyComment;
+            if (!replyComment) {
+              try {
+                aiDraft = await reviewHandler.generateCustomApologyDraft(
+                  { starRating: starRating, comment },
+                  shop.name,
+                  shop.custom_review_prompt || undefined,
+                  '導入前の未返信口コミとして、丁寧にお礼やお詫びの下書きを作成してください。'
+                );
+                console.log(`🤖 AI historical reply draft prepared for ${reviewerName}: "${aiDraft}"`);
+              } catch (err: any) {
+                console.error(`⚠️ Failed to generate AI draft for historical review:`, err.message || err);
+                aiDraft = starRating <= 2
+                  ? 'この度はご満足いただける対応ができず誠に申し訳ありません。いただいたご意見を真摯に受け止め改善に努めてまいります。'
+                  : '温かい評価をいただき誠にありがとうございます！今後とも喜んでいただけるようサービス向上に努めてまいります。またのご来院をお待ちしております。';
+              }
+            }
 
             await prisma.reviewLogs.create({
               data: {
@@ -1793,9 +1812,9 @@ async function syncReviewsFromGBP(shopId: string) {
                 reviewer_name: reviewerName,
                 star_rating: starRating,
                 comment,
-                reply_text: replyComment,
+                reply_text: aiDraft,
                 is_auto_replied: !!replyComment, // If already replied on Google, mark true, else false
-                requires_alert: false,
+                requires_alert: false, // No LINE alerts!
                 create_time: new Date(createTime),
               }
             });
