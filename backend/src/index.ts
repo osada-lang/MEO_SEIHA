@@ -2164,24 +2164,18 @@ app.listen(port, () => {
         data: { agency_name: 'THANXCREATE' }
       });
 
-      // Initialize Agency X (osada@jira-chi.net)
-      const agencyX = await prisma.shop.upsert({
-        where: { email: 'osada@jira-chi.net' },
-        update: {
-          name: '代理店X',
-          password: 'osada@jira-chi.net',
-          role: 'AGENCY',
-          agency_name: '代理店X',
-        },
-        create: {
-          name: '代理店X',
-          email: 'osada@jira-chi.net',
-          password: 'osada@jira-chi.net',
-          role: 'AGENCY',
-          agency_name: '代理店X',
-        }
-      });
-      console.log(`✅ Agency X Account configured successfully! (Email: ${agencyX.email}, Role: ${agencyX.role})`);
+      // Cascade delete Agency X (osada@jira-chi.net) test account from both code and live database
+      console.log('🧹 Running cleanups for deleted Agency accounts...');
+      const agencyXEmail = 'osada@jira-chi.net';
+      const agencyByEmail = await prisma.shop.findUnique({ where: { email: agencyXEmail } });
+      if (agencyByEmail) {
+        await prisma.replyTemplates.deleteMany({ where: { shop_id: agencyByEmail.id } });
+        await prisma.shopKeywords.deleteMany({ where: { shop_id: agencyByEmail.id } });
+        await prisma.reviewLogs.deleteMany({ where: { shop_id: agencyByEmail.id } });
+        await prisma.magicLinkToken.deleteMany({ where: { shop_id: agencyByEmail.id } });
+        await prisma.shop.delete({ where: { id: agencyByEmail.id } });
+        console.log(`🧹 Cleaned up ${agencyXEmail} agency account successfully.`);
+      }
 
       // Cascade delete おちあい・接骨院 test account and all its related records if they exist to keep production database clean
       console.log('🧹 Running cleanups for deleted test accounts...');
