@@ -2155,6 +2155,169 @@ app.listen(port, () => {
     try {
       console.log('👤 Checking Master Account (thanxcreate.gbp@gmail.com) initialization...');
       
+      // Check if a one-time reset is needed for THANX CREATE account to clean up connection issues
+      const existingThanx = await prisma.shop.findUnique({
+        where: { email: 'thanxcreate@gmail.com' },
+        include: { keywords: true, templates: true }
+      });
+
+      const correctLocationId = 'locations/7613471938029191960';
+      const correctDriveFolderId = '1AIgemm9-fvP-eLwP7p2p8Plja1mbOJtX';
+
+      const needsReset = existingThanx && (
+        existingThanx.google_location_id !== correctLocationId ||
+        existingThanx.google_drive_folder_id !== correctDriveFolderId ||
+        process.env.FORCE_THANX_RESET === 'true'
+      );
+
+      if (needsReset && existingThanx) {
+        console.log('🧹 [Reset Trigger] Detected invalid connection settings or FORCE_THANX_RESET on "合同会社THANX CREATE". Initiating safe backup and clean recreate...');
+
+        // 1. Safe backup in memory
+        const backupShop = {
+          name: existingThanx.name,
+          password: existingThanx.password,
+          role: existingThanx.role,
+          agency_name: existingThanx.agency_name,
+          line_user_id: existingThanx.line_user_id,
+          reply_active: existingThanx.reply_active,
+          custom_review_prompt: existingThanx.custom_review_prompt,
+        };
+
+        const backupKeywords = existingThanx.keywords ? {
+          main_keywords: existingThanx.keywords.main_keywords,
+          sub_keywords: existingThanx.keywords.sub_keywords,
+          fixed_footer: existingThanx.keywords.fixed_footer,
+          custom_prompt: existingThanx.keywords.custom_prompt,
+          hp_url: existingThanx.keywords.hp_url,
+          tabelog_url: existingThanx.keywords.tabelog_url,
+          hotpepper_url: existingThanx.keywords.hotpepper_url,
+          gurunavi_url: existingThanx.keywords.gurunavi_url,
+          gbp_action_url: existingThanx.keywords.gbp_action_url,
+          post_time_hour: existingThanx.keywords.post_time_hour,
+        } : null;
+
+        const backupTemplates = existingThanx.templates ? {
+          templates_star3: existingThanx.templates.templates_star3,
+          templates_star4: existingThanx.templates.templates_star4,
+          templates_star5: existingThanx.templates.templates_star5,
+        } : null;
+
+        // 2. Cascade delete existing records for 'thanx-create-uuid' to completely purge old state
+        const targetThanxId = 'thanx-create-uuid';
+        console.log(`🧹 Purging old THANX CREATE data from live database for ID: ${targetThanxId}...`);
+        await prisma.replyTemplates.deleteMany({ where: { shop_id: targetThanxId } });
+        await prisma.shopKeywords.deleteMany({ where: { shop_id: targetThanxId } });
+        await prisma.reviewLogs.deleteMany({ where: { shop_id: targetThanxId } });
+        await prisma.magicLinkToken.deleteMany({ where: { shop_id: targetThanxId } });
+        await prisma.shop.deleteMany({ where: { id: targetThanxId } });
+
+        // Just in case it was under a different ID, search and delete by email
+        const thanxByEmail = await prisma.shop.findUnique({ where: { email: 'thanxcreate@gmail.com' } });
+        if (thanxByEmail) {
+          await prisma.replyTemplates.deleteMany({ where: { shop_id: thanxByEmail.id } });
+          await prisma.shopKeywords.deleteMany({ where: { shop_id: thanxByEmail.id } });
+          await prisma.reviewLogs.deleteMany({ where: { shop_id: thanxByEmail.id } });
+          await prisma.magicLinkToken.deleteMany({ where: { shop_id: thanxByEmail.id } });
+          await prisma.shop.delete({ where: { id: thanxByEmail.id } });
+        }
+
+        console.log('🧹 Purge completed successfully. Recreating cleanly and restoring backed up configurations...');
+
+        // 3. Recreate clean Shop record with correct location and drive folder IDs
+        await prisma.shop.create({
+          data: {
+            id: targetThanxId,
+            name: backupShop.name || '合同会社THANX CREATE',
+            email: 'thanxcreate@gmail.com',
+            password: backupShop.password || 'password',
+            role: backupShop.role || 'OWNER',
+            agency_name: backupShop.agency_name || 'THANXCREATE',
+            google_location_id: correctLocationId,
+            google_drive_folder_id: correctDriveFolderId,
+            line_user_id: backupShop.line_user_id,
+            reply_active: backupShop.reply_active ?? true,
+            custom_review_prompt: backupShop.custom_review_prompt,
+          }
+        });
+
+        // 4. Recreate ShopKeywords with backed up custom settings
+        if (backupKeywords) {
+          await prisma.shopKeywords.create({
+            data: {
+              shop_id: targetThanxId,
+              main_keywords: backupKeywords.main_keywords,
+              sub_keywords: backupKeywords.sub_keywords,
+              fixed_footer: backupKeywords.fixed_footer,
+              custom_prompt: backupKeywords.custom_prompt,
+              hp_url: backupKeywords.hp_url,
+              tabelog_url: backupKeywords.tabelog_url,
+              hotpepper_url: backupKeywords.hotpepper_url,
+              gurunavi_url: backupKeywords.gurunavi_url,
+              gbp_action_url: backupKeywords.gbp_action_url,
+              post_time_hour: backupKeywords.post_time_hour,
+            }
+          });
+        } else {
+          // Default fallback keywords if they didn't exist before
+          await prisma.shopKeywords.create({
+            data: {
+              shop_id: targetThanxId,
+              main_keywords: JSON.stringify(['名古屋 MEO', 'MEO対策', 'Googleマップ集客', 'ローカルSEO', 'THANX CREATE']),
+              sub_keywords: JSON.stringify(['口コミ対策', 'GBP運用', 'マップ順位', '集客効果', '名古屋マーケティング', '店舗集客', '自動投稿', 'SNS連動', '口コミ返信', 'AI作成']),
+              fixed_footer: '店舗名: 合同会社THANX CREATE\n住所: 名古屋市中区栄1丁目23-29',
+              custom_prompt: '丁寧で自然なトーンで、MEO集客サポートの魅力を訴求してください。',
+              post_time_hour: 12,
+            }
+          });
+        }
+
+        // 5. Recreate ReplyTemplates with backed up custom settings
+        if (backupTemplates) {
+          await prisma.replyTemplates.create({
+            data: {
+              shop_id: targetThanxId,
+              templates_star3: backupTemplates.templates_star3,
+              templates_star4: backupTemplates.templates_star4,
+              templates_star5: backupTemplates.templates_star5,
+            }
+          });
+        } else {
+          // Default templates fallback
+          const defaultStar3 = [
+            'ご来店および貴重なご意見をいただきありがとうございます。ご指摘いただいた点を真摯に受け止め、今後のサービス向上に役立ててまいります。',
+            'この度はご来店いただきありがとうございました。至らない点があったことをお詫びするとともに、スタッフ一同、よりご満足いただけるお店づくりに努めてまいります。',
+            'ご感想をお寄せいただきありがとうございます。いただいたご意見を店舗全体で共有し、改善を重ね要領よく対応してまいります。またのご来店をお待ちしております。',
+            'ご来店ありがとうございました。お褒めいただいた点も、ご指摘いただいた点も大変参考になります。今後ともよろしくお願いいたします。',
+            'ご意見ありがとうございます。次回ご来店の際には、より良いサービスを提供できるよう、スタッフ教育や設備改善に取り組んでまいります。'
+          ];
+          const defaultStar4 = [
+            'この度はご来店いただき、また高評価をありがとうございます！ご満足いただけて大変嬉しく思います。またのお越しを心よりお待ちしております。',
+            'お忙しい中、嬉しい口コミをご投稿いただき誠にありがとうございます。これからも素敵なお時間を提供できるよう、努力を続けてまいります。',
+            'ご来店および素晴らしい評価をありがとうございます。お食事やお店の雰囲気を楽しんでいただけて何よりです。次回のご来店もお待ちしております。',
+            '大変嬉しいお声をいただき、スタッフ一同の励みになります！次回はさらにご満足いただけるよう、心を込めておもてなしいたします。',
+            'ご投稿ありがとうございます！高評価をいただき感謝申し上げます。今後とも変わらぬご愛顧のほど、よろしくお願い申し上げます。'
+          ];
+          const defaultStar5 = [
+            'この度は最高評価をいただき、誠にありがとうございます！本当に嬉しいお言葉を励みに、これからも最上のサービスを追求してまいります。',
+            'ご来店いただき、またお褒めの言葉をいただき大変光栄です！また次回も「来てよかった」と思っていただけるよう、全力を尽くします。',
+            '素晴らしい評価をありがとうございます！当店での時間が素敵な思い出となったのであれば幸いです。またのご来店を心よりお待ちしております！',
+            'スタッフ全員が笑顔になる最高の口コミをありがとうございます！いただいたエネルギーを糧に、次回も完璧な施術・サービスを提供します。',
+            'ご来店ありがとうございました！星5つの満点評価をいただき感謝の極みです。これからもお客様に愛され続けるお店を目指して頑張ります！'
+          ];
+          await prisma.replyTemplates.create({
+            data: {
+              shop_id: targetThanxId,
+              templates_star3: JSON.stringify(defaultStar3),
+              templates_star4: JSON.stringify(defaultStar4),
+              templates_star5: JSON.stringify(defaultStar5),
+            }
+          });
+        }
+
+        console.log('✅ [Reset Trigger] "合同会社THANX CREATE" account has been cleanly recreated, corrected, and all custom configurations successfully restored!');
+      }
+
       // Upsert/Update the THANX CREATE OWNER account to ensure it's up to date with new GBP Location and Drive IDs
       const thanxOwner = await prisma.shop.upsert({
         where: { email: 'thanxcreate@gmail.com' },
