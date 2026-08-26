@@ -1798,13 +1798,47 @@ async function syncReviewsFromGBP(shopId: string) {
     if (locationPath) {
       console.log(`📡 Fetching latest GBP reviews for store: "${shop.name}"...`);
 
-      // Fetch latest 10 reviews from Google My Business API
+      // Fetch latest 50 reviews from Google My Business API to ensure a broad window for delete-detection
       const reviewsRes = await oauth2Client.request({
-        url: `https://mybusiness.googleapis.com/v4/${locationPath}/reviews`,
+        url: `https://mybusiness.googleapis.com/v4/${locationPath}/reviews?pageSize=50`,
         method: 'GET'
       });
 
       const gbpReviews = (reviewsRes.data as any).reviews || [];
+
+      // 🛡️ Safe Deletion Sync: detect reviews deleted from Google GBP
+      if (gbpReviews.length > 0) {
+        const activeReviewIds = new Set(gbpReviews.map((r: any) => r.name));
+        
+        // Find the oldest review date in the retrieved GBP set (filtering out any invalid/NaN dates)
+        const gbpTimes = gbpReviews
+          .map((r: any) => new Date(r.createTime || '').getTime())
+          .filter((t: number) => !isNaN(t));
+
+        if (gbpTimes.length > 0) {
+          const oldestGbpTimestamp = Math.min(...gbpTimes);
+
+          // Get local reviews for this shop from the database
+          const localReviews = await prisma.reviewLogs.findMany({
+            where: { shop_id: shop.id },
+            select: { id: true, review_id: true, create_time: true }
+          });
+
+          for (const localRev of localReviews) {
+            const localTimestamp = new Date(localRev.create_time).getTime();
+
+            // If the local review timestamp is valid and newer than or equal to the oldest retrieved GBP review,
+            // but is NOT present in the active GMB list, it has been deleted from Google!
+            if (!isNaN(localTimestamp) && localTimestamp >= oldestGbpTimestamp && !activeReviewIds.has(localRev.review_id)) {
+              console.log(`🗑️ [GBP Sync] Detected DELETED review on Google GBP. Deleting locally: ID = ${localRev.review_id}`);
+              await prisma.reviewLogs.delete({
+                where: { id: localRev.id }
+              });
+            }
+          }
+        }
+      }
+
       for (const gReview of gbpReviews) {
         const reviewId = gReview.name; // Full resource name e.g. "accounts/X/locations/Y/reviews/Z"
         const reviewerName = gReview.reviewer?.displayName || '匿名ユーザー';
