@@ -203,6 +203,8 @@ export default function App() {
         if (res.ok) {
           const data = await res.json();
           setCurrentShop(data.shop);
+          setUserRole(data.shop.role);
+          localStorage.setItem('userRole', data.shop.role);
           setIsViewingShop(data.shop.role !== 'ADMIN' && data.shop.role !== 'AGENCY');
           if (data.newToken) {
             console.log('🔄 Magic token successfully exchanged for standard session token.');

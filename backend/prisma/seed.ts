@@ -43,7 +43,7 @@ async function main() {
         password: 'password',
         role: 'OWNER',
         agency_name: 'THANXCREATE',
-        google_location_id: 'locations/3018418038085555463',
+        google_location_id: 'locations/7613471938029191960',
         google_drive_folder_id: '1AIgemm9-fvP-eLwP7p2p8Plja1mbOJtX',
         line_user_id: process.env.LINE_USER_ID || 'U205e0595cff6e3882288962525941500',
         reply_active: true,
@@ -54,7 +54,12 @@ async function main() {
   } else {
     shop3 = await prisma.shop.update({
       where: { id: 'thanx-create-uuid' },
-      data: { agency_name: 'THANXCREATE' }
+      data: {
+        name: '合同会社THANX CREATE',
+        google_location_id: 'locations/7613471938029191960',
+        google_drive_folder_id: '1AIgemm9-fvP-eLwP7p2p8Plja1mbOJtX',
+        agency_name: 'THANXCREATE'
+      }
     });
   }
 

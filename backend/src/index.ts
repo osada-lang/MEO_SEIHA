@@ -334,10 +334,10 @@ app.get('/api/shops', async (req, res) => {
     }
 
     if (caller.role === 'ADMIN') {
-      // Master admin: Return all shops (with OWNER or AGENCY roles)
+      // Master admin: Return all shops (with OWNER role only, exclude AGENCY role)
       const shops = await prisma.shop.findMany({
         where: {
-          role: { in: ['OWNER', 'AGENCY'] }
+          role: 'OWNER'
         },
         orderBy: { name: 'asc' }
       });
@@ -1921,7 +1921,9 @@ async function runBackgroundScheduler() {
   const googleAuthAvailable = !!(clientID && clientSecret && refreshToken);
 
   try {
+    // Only fetch OWNER shops for review sync and daily posting
     const shops = await prisma.shop.findMany({
+      where: { role: 'OWNER' },
       include: { keywords: true, templates: true },
     });
 
@@ -2100,26 +2102,49 @@ app.listen(port, () => {
   setTimeout(async () => {
     try {
       console.log('👤 Checking Master Account (thanxcreate.gbp@gmail.com) initialization...');
-      const thanxOwner = await prisma.shop.findUnique({
-        where: { email: 'thanxcreate@gmail.com' }
+      
+      // Upsert/Update the THANX CREATE OWNER account to ensure it's up to date with new GBP Location and Drive IDs
+      const thanxOwner = await prisma.shop.upsert({
+        where: { email: 'thanxcreate@gmail.com' },
+        update: {
+          name: '合同会社THANX CREATE',
+          google_location_id: 'locations/7613471938029191960',
+          google_drive_folder_id: '1AIgemm9-fvP-eLwP7p2p8Plja1mbOJtX',
+          agency_name: 'THANXCREATE',
+        },
+        create: {
+          id: 'thanx-create-uuid',
+          name: '合同会社THANX CREATE',
+          email: 'thanxcreate@gmail.com',
+          password: 'password',
+          role: 'OWNER',
+          agency_name: 'THANXCREATE',
+          google_location_id: 'locations/7613471938029191960',
+          google_drive_folder_id: '1AIgemm9-fvP-eLwP7p2p8Plja1mbOJtX',
+          line_user_id: process.env.LINE_USER_ID || 'U205e0595cff6e3882288962525941500',
+          reply_active: true,
+          custom_review_prompt: '合同会社THANX CREATEのカスタマーサポートとして、極めて真摯にお詫びしてください。店舗様の売上向上に本気で伴走する企業として、サービス改善へ向けて早急に対応する熱い誠意を伝えてください。',
+        }
       });
       
       // Load secure master admin password from environment variable with a safe dynamic fallback
-      const password = process.env.MASTER_ADMIN_PASSWORD || (thanxOwner ? thanxOwner.password : 'password');
+      const password = process.env.MASTER_ADMIN_PASSWORD || thanxOwner.password || 'password';
 
       const masterAccount = await prisma.shop.upsert({
         where: { email: 'thanxcreate.gbp@gmail.com' },
         update: {
           password: password,
           role: 'ADMIN',
+          google_drive_folder_id: thanxOwner.google_drive_folder_id,
+          google_location_id: thanxOwner.google_location_id,
         },
         create: {
           name: 'MEO SEIHA運営本部',
           email: 'thanxcreate.gbp@gmail.com',
           password: password,
           role: 'ADMIN',
-          google_drive_folder_id: thanxOwner ? thanxOwner.google_drive_folder_id : null,
-          google_location_id: thanxOwner ? thanxOwner.google_location_id : null,
+          google_drive_folder_id: thanxOwner.google_drive_folder_id,
+          google_location_id: thanxOwner.google_location_id,
         }
       });
       console.log(`✅ Master Account configured successfully! (Email: ${masterAccount.email}, Role: ${masterAccount.role})`);
@@ -2149,81 +2174,25 @@ app.listen(port, () => {
       });
       console.log(`✅ Agency X Account configured successfully! (Email: ${agencyX.email}, Role: ${agencyX.role})`);
 
-      // Initialize Store Account: おちあい・接骨院 (example@ochiai.com) under 代理店X
-      const ochiaiShop = await prisma.shop.upsert({
-        where: { email: 'example@ochiai.com' },
-        update: {
-          name: 'おちあい・接骨院',
-          password: 'ochiai-genki-2026',
-          role: 'OWNER',
-          agency_name: '代理店X',
-          google_location_id: 'locations/3426455374877057214',
-          google_drive_folder_id: '1UXkoo6_sieboLwPmgXEOlkFhTypiFGAF',
-          reply_active: true,
-          custom_review_prompt: 'おちあい・接骨院の親身で丁寧なスタッフとして、患者様への深い感謝とお体の健康に配慮した温かい口コミ返信を作成してください。',
-        },
-        create: {
-          id: 'ochiai-sekkotsuin-uuid',
-          name: 'おちあい・接骨院',
-          email: 'example@ochiai.com',
-          password: 'ochiai-genki-2026',
-          role: 'OWNER',
-          agency_name: '代理店X',
-          google_location_id: 'locations/3426455374877057214',
-          google_drive_folder_id: '1UXkoo6_sieboLwPmgXEOlkFhTypiFGAF',
-          reply_active: true,
-          custom_review_prompt: 'おちあい・接骨院の親身で丁寧なスタッフとして、患者様への深い感謝とお体の健康に配慮した温かい口コミ返信を作成してください。',
-        }
-      });
-      console.log(`✅ Ochiai Sekkotsuin Shop Account configured successfully! (Email: ${ochiaiShop.email}, Role: ${ochiaiShop.role})`);
-
-      // Initialize ShopKeywords for おちあい・接骨院
-      await prisma.shopKeywords.upsert({
-        where: { shop_id: ochiaiShop.id },
-        update: {},
-        create: {
-          shop_id: ochiaiShop.id,
-          main_keywords: JSON.stringify(['落合 接骨院', '接骨院', '整骨院', '骨盤矯正']),
-          sub_keywords: JSON.stringify(['肩こり 改善', '腰痛 治療', '交通事故 治療', 'むちうち 改善']),
-          fixed_footer: '店舗名: おちあい・接骨院\n住所: 静岡県内接骨院\nお気軽にご相談ください！',
-          custom_prompt: '患者様一人ひとりに寄り添い、真摯に対応する接骨院の姿勢をアピールしてください。',
-        }
-      });
-
-      // Initialize default ReplyTemplates for おちあい・接骨院
-      const star3Templates = [
-        'ご来院および貴重なご意見をいただきありがとうございます。ご指摘いただいた内容を真摯に受け止め、よりリラックスして施術を受けられる環境づくりに役立ててまいります。',
-        'この度はご来院いただきありがとうございました。ご満足しきれなかった点があったことをお詫びするとともに、今後よりご満足いただける施術と対応に努めてまいります。',
-        '貴重なご感想をいただきありがとうございます。いただいたご意見をスタッフ全員で共有し、サービスおよび技術の向上に取り組んでまいります。またのご来院をお待ちしております。',
-        'ご来院ありがとうございました。お褒めいただいた点も、ご指摘いただいた点も大変参考になります。これからも患者様のお役に立てるよう全力でサポートいたします。',
-        'ご意見ありがとうございます。次回ご来院の際には、より快適にお過ごしいただき、施術効果を感じていただけるよう取り組んでまいります。'
-      ];
-      const star4Templates = [
-        'この度はご来院いただき、また高評価をありがとうございます！お体が楽になられたようで大変嬉しく思います。またいつでもメンテナンスにお越しくださいね。',
-        'お忙しい中、嬉しいお声をご投稿いただき誠にありがとうございます。これからも素敵なお時間を過ごし、お体を整えていただけるよう努力を続けてまいります。',
-        'ご来院および素晴らしい評価をありがとうございます。当院の雰囲気や施術が患者様のお役に立てて何よりです。次回のご来院も心よりお待ちしております。',
-        '大変嬉しいお声をいただき、施術スタッフ一同の励みになります！次回はさらにご満足いただけるよう、親身になって施術とおもてなしをさせていただきます。',
-        'ご投稿ありがとうございます！高評価をいただき感謝申し上げます。今後とも変わらぬご愛顧とお体のサポートのほど、よろしくお願い申し上げます。'
-      ];
-      const star5Templates = [
-        'この度は満点評価をいただき、誠にありがとうございます！お体が軽くなったとの嬉しいお言葉を励みに、これからも最上の施術とサポートを追求してまいります。',
-        'ご来院いただき、またお褒めの言葉をいただき大変光栄です！次回も「おちあいに来て本当によかった」と思っていただけるよう、全力を尽くしてお体をケアします。',
-        '素晴らしい評価をありがとうございます！当院での施術とおもてなしが患者様の日々の元気に繋がっているようで幸いです。またのご来院を心よりお待ちしております！',
-        'スタッフ一同が本当に笑顔になる温かい口コミをありがとうございます！いただいたエネルギーを糧に、次回も完璧なサポートとアドバイスをさせていただきます。',
-        'ご来院ありがとうございました！星5つの高評価をいただき心より感謝申し上げます。これからも患者様に愛され、頼りにされ続ける接骨院を目指して日々頑張ります！'
-      ];
-
-      await prisma.replyTemplates.upsert({
-        where: { shop_id: ochiaiShop.id },
-        update: {},
-        create: {
-          shop_id: ochiaiShop.id,
-          templates_star3: JSON.stringify(star3Templates),
-          templates_star4: JSON.stringify(star4Templates),
-          templates_star5: JSON.stringify(star5Templates),
-        }
-      });
-      console.log(`✅ Default ReplyTemplates configured for Ochiai Sekkotsuin!`);
+      // Cascade delete おちあい・接骨院 test account and all its related records if they exist to keep production database clean
+      console.log('🧹 Running cleanups for deleted test accounts...');
+      const targetOchiaiId = 'ochiai-sekkotsuin-uuid';
+      const deletedTemplates = await prisma.replyTemplates.deleteMany({ where: { shop_id: targetOchiaiId } });
+      const deletedKeywords = await prisma.shopKeywords.deleteMany({ where: { shop_id: targetOchiaiId } });
+      const deletedReviewLogs = await prisma.reviewLogs.deleteMany({ where: { shop_id: targetOchiaiId } });
+      const deletedMagicTokens = await prisma.magicLinkToken.deleteMany({ where: { shop_id: targetOchiaiId } });
+      const deletedShop = await prisma.shop.deleteMany({ where: { id: targetOchiaiId } });
+      
+      // Also delete any shop with email example@ochiai.com just in case it had a different ID
+      const ochiaiByEmail = await prisma.shop.findUnique({ where: { email: 'example@ochiai.com' } });
+      if (ochiaiByEmail) {
+        await prisma.replyTemplates.deleteMany({ where: { shop_id: ochiaiByEmail.id } });
+        await prisma.shopKeywords.deleteMany({ where: { shop_id: ochiaiByEmail.id } });
+        await prisma.reviewLogs.deleteMany({ where: { shop_id: ochiaiByEmail.id } });
+        await prisma.magicLinkToken.deleteMany({ where: { shop_id: ochiaiByEmail.id } });
+        await prisma.shop.delete({ where: { id: ochiaiByEmail.id } });
+      }
+      console.log('🧹 Cleaned up おちあい・接骨院 test account data successfully.');
     } catch (dbErr: any) {
       console.error('❌ Failed to initialize Master Account:', dbErr.message || dbErr);
     }
