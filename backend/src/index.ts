@@ -341,7 +341,16 @@ app.get('/api/shops', async (req, res) => {
         },
         orderBy: { name: 'asc' }
       });
-      return res.json({ shops });
+      
+      // Fetch all agency accounts so they can be rendered even if they have no stores
+      const agencies = await prisma.shop.findMany({
+        where: {
+          role: 'AGENCY'
+        },
+        orderBy: { name: 'asc' }
+      });
+      
+      return res.json({ shops, agencies });
     } else if (caller.role === 'AGENCY') {
       // Agency manager: Return only shops where agency_name matches the agency's name or its agency_name
       const agencyName = caller.agency_name || caller.name;
@@ -352,7 +361,7 @@ app.get('/api/shops', async (req, res) => {
         },
         orderBy: { name: 'asc' }
       });
-      return res.json({ shops });
+      return res.json({ shops, agencies: [] });
     } else {
       return res.status(403).json({ error: '店舗一覧を閲覧する権限がありません。' });
     }

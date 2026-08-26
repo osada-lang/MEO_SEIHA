@@ -143,6 +143,7 @@ export default function App() {
 
   // Master Account States
   const [shopsList, setShopsList] = useState<ShopProfile[]>([]);
+  const [agenciesList, setAgenciesList] = useState<ShopProfile[]>([]);
   const [isViewingShop, setIsViewingShop] = useState<boolean>(false);
   const [shopSearchQuery, setShopSearchQuery] = useState<string>('');
   const [expandedAgencies, setExpandedAgencies] = useState<{ [key: string]: boolean }>({
@@ -177,7 +178,8 @@ export default function App() {
           });
           if (res.ok) {
             const data = await res.json();
-            setShopsList(data.shops);
+            setShopsList(data.shops || []);
+            setAgenciesList(data.agencies || []);
           }
         } catch (err) {
           console.error('Failed to fetch shops list:', err);
@@ -915,6 +917,20 @@ export default function App() {
   if (token && currentShop && (userRole === 'ADMIN' || userRole === 'AGENCY') && !isViewingShop) {
     // Group shopsList by agency name
     const groupedShops: { [agency: string]: ShopProfile[] } = {};
+
+    // For ADMIN role, pre-populate all existing agencies so they appear even if they have 0 shops
+    if (userRole === 'ADMIN') {
+      agenciesList.forEach((agency) => {
+        const agencyName = agency.name || '不明な代理店';
+        // Only include if empty or matches search query (or if searching for shops, we still keep empty agencies)
+        if (!shopSearchQuery || agencyName.toLowerCase().includes(shopSearchQuery.toLowerCase())) {
+          if (!groupedShops[agencyName]) {
+            groupedShops[agencyName] = [];
+          }
+        }
+      });
+    }
+
     const filteredShops = shopsList.filter(shop =>
       shop.name.toLowerCase().includes(shopSearchQuery.toLowerCase()) ||
       shop.email.toLowerCase().includes(shopSearchQuery.toLowerCase()) ||
@@ -1034,31 +1050,37 @@ export default function App() {
                     {/* Expandable Shops List */}
                     {isExpanded && (
                       <div className="border-t border-slate-100 divide-y divide-slate-100 bg-white">
-                        {shops.map((shop) => (
-                          <div key={shop.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 hover:bg-slate-50/50 transition-colors">
-                            <div className="space-y-1">
-                              <h3 className="text-xs font-black text-slate-900">{shop.name}</h3>
-                              <p className="text-[10px] text-slate-400 font-bold">{shop.email}</p>
-                            </div>
-                            <div className="flex items-center gap-3 self-end sm:self-auto">
-                              <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
-                                shop.reply_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-slate-100 text-slate-500 border border-slate-200'
-                              }`}>
-                                {shop.reply_active ? '自動返信: 作動中' : '自動返信: 停止中'}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setCurrentShop(shop);
-                                  setIsViewingShop(true);
-                                }}
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[10px] py-1.5 px-3.5 rounded-xl shadow-sm transition-all active:scale-[0.97]"
-                              >
-                                管理画面にアクセス ➔
-                              </button>
-                            </div>
+                        {shops.length === 0 ? (
+                          <div className="p-5 text-center text-slate-400 font-bold text-xs bg-slate-50/20">
+                            📭 契約・導入店舗はありません（店舗なし）
                           </div>
-                        ))}
+                        ) : (
+                          shops.map((shop) => (
+                            <div key={shop.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 hover:bg-slate-50/50 transition-colors">
+                              <div className="space-y-1">
+                                <h3 className="text-xs font-black text-slate-900">{shop.name}</h3>
+                                <p className="text-[10px] text-slate-400 font-bold">{shop.email}</p>
+                              </div>
+                              <div className="flex items-center gap-3 self-end sm:self-auto">
+                                <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                                  shop.reply_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-slate-100 text-slate-500 border border-slate-200'
+                                }`}>
+                                  {shop.reply_active ? '自動返信: 作動中' : '自動返信: 停止中'}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCurrentShop(shop);
+                                    setIsViewingShop(true);
+                                  }}
+                                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[10px] py-1.5 px-3.5 rounded-xl shadow-sm transition-all active:scale-[0.97]"
+                                >
+                                  管理画面にアクセス ➔
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        )}
                       </div>
                     )}
                   </div>
