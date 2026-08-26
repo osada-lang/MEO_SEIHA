@@ -1810,6 +1810,10 @@ async function syncReviewsFromGBP(shopId: string) {
       if (gbpReviews.length > 0) {
         const activeReviewIds = new Set(gbpReviews.map((r: any) => r.name));
         
+        // If the retrieved reviews from GBP is less than 50, it means we fetched the entire set of reviews for this shop.
+        // In this case, we can safely delete any local review not present in activeReviewIds regardless of its age.
+        const isEntireSet = gbpReviews.length < 50;
+
         // Find the oldest review date in the retrieved GBP set (filtering out any invalid/NaN dates)
         const gbpTimes = gbpReviews
           .map((r: any) => new Date(r.createTime || '').getTime())
@@ -1827,13 +1831,18 @@ async function syncReviewsFromGBP(shopId: string) {
           for (const localRev of localReviews) {
             const localTimestamp = new Date(localRev.create_time).getTime();
 
-            // If the local review timestamp is valid and newer than or equal to the oldest retrieved GBP review,
-            // but is NOT present in the active GMB list, it has been deleted from Google!
-            if (!isNaN(localTimestamp) && localTimestamp >= oldestGbpTimestamp && !activeReviewIds.has(localRev.review_id)) {
-              console.log(`🗑️ [GBP Sync] Detected DELETED review on Google GBP. Deleting locally: ID = ${localRev.review_id}`);
-              await prisma.reviewLogs.delete({
-                where: { id: localRev.id }
-              });
+            if (!isNaN(localTimestamp)) {
+              // We delete the local review if:
+              // 1. It is not in GMB active list
+              // 2. AND (we have fetched the entire GMB set OR the local review is within the retrieved window)
+              const isWithinWindow = localTimestamp >= oldestGbpTimestamp;
+
+              if ((isEntireSet || isWithinWindow) && !activeReviewIds.has(localRev.review_id)) {
+                console.log(`🗑️ [GBP Sync] Detected DELETED review on Google GBP. Deleting locally: ID = ${localRev.review_id}`);
+                await prisma.reviewLogs.delete({
+                  where: { id: localRev.id }
+                });
+              }
             }
           }
         }
