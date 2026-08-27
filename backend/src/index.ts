@@ -2205,7 +2205,7 @@ app.listen(port, () => {
           id: targetThanxId,
           name: '合同会社THANX CREATE',
           email: 'thanxcreate@gmail.com',
-          password: 'password',
+          password: 'Tody-12191019',
           role: 'OWNER',
           agency_name: 'THANXCREATE',
           google_location_id: 'locations/7613471938029191960',
