@@ -2464,6 +2464,73 @@ app.listen(port, () => {
 
       console.log('✅ Agency X and Avenir Hair demo data have been successfully seeded!');
 
+      // Safe purge existing ラフ＆ミートラウンジ晴れテル。
+      const targetHareteruId = 'hareteru-lounge-uuid';
+      console.log('🧹 Purging existing ラフ＆ミートラウンジ晴れテル。 data...');
+      await prisma.replyTemplates.deleteMany({ where: { shop_id: targetHareteruId } });
+      await prisma.shopKeywords.deleteMany({ where: { shop_id: targetHareteruId } });
+      await prisma.reviewLogs.deleteMany({ where: { shop_id: targetHareteruId } });
+      await prisma.magicLinkToken.deleteMany({ where: { shop_id: targetHareteruId } });
+      await prisma.shop.deleteMany({ where: { id: targetHareteruId } });
+
+      const hareteruByEmail = await prisma.shop.findUnique({ where: { email: 'moiccho@gmail.com' } });
+      if (hareteruByEmail) {
+        await prisma.replyTemplates.deleteMany({ where: { shop_id: hareteruByEmail.id } });
+        await prisma.shopKeywords.deleteMany({ where: { shop_id: hareteruByEmail.id } });
+        await prisma.reviewLogs.deleteMany({ where: { shop_id: hareteruByEmail.id } });
+        await prisma.magicLinkToken.deleteMany({ where: { shop_id: hareteruByEmail.id } });
+        await prisma.shop.delete({ where: { id: hareteruByEmail.id } });
+      }
+      console.log('🧹 Purge completed successfully.');
+
+      console.log('✨ Issuing brand-new clean OWNER account for "ラフ＆ミートラウンジ晴れテル。"...');
+      await prisma.shop.create({
+        data: {
+          id: targetHareteruId,
+          name: 'ラフ＆ミートラウンジ晴れテル。',
+          email: 'moiccho@gmail.com',
+          password: 'Hareteru-Meat-8080',
+          role: 'OWNER',
+          agency_name: 'THANXCREATE',
+          google_location_id: 'locations/10645469356950848476',
+          google_drive_folder_id: '1YAGUDKqOy1UBta7XGpbO_s3A7vqr3DeB',
+          line_user_id: null,
+          reply_active: false,
+          post_active: false,
+          custom_review_prompt: '「ラフ＆ミートラウンジ晴れテル。」の魅力（美味しい極上肉料理、心地よいラウンジ空間、アットホームで楽しい雰囲気）を明るく魅力的にアピールしてください。不満のお言葉には真摯にお詫びし、迅速にサービスや運営の改善へ取り組む誠意を伝えてください。',
+          created_at: new Date('2026-09-01T00:00:00+09:00'), // Treated as Sept 1, 2026!
+        }
+      });
+
+      // Keywords with gbp_action_url
+      await prisma.shopKeywords.create({
+        data: {
+          shop_id: targetHareteruId,
+          main_keywords: JSON.stringify(['名古屋 肉バル', '肉ラウンジ 晴れテル', '名古屋 グルメ', 'ミートラウンジ', '晴れテル']),
+          sub_keywords: JSON.stringify(['美味しいお肉', '個室ダイニング', '名古屋ステーキ', '宴会バル', 'おしゃれ居酒屋', '女子会バル', '肉料理おすすめ']),
+          fixed_footer: '店舗名: ラフ＆ミートラウンジ晴れテル。\n住所: 愛知県名古屋市中区\nご予約・お問い合わせはお気軽にどうぞ！',
+          custom_prompt: '「ラフ＆ミートラウンジ晴れテル。」の魅力（美味しい極上肉料理、心地よいラウンジ空間、アットホームで楽しい雰囲気）を明るく魅力的にアピールしてください。',
+          hp_url: 'https://maps.app.goo.gl/BMGhuf16cvVUkQAF9',
+          tabelog_url: '',
+          hotpepper_url: '',
+          gurunavi_url: '',
+          gbp_action_url: 'https://maps.app.goo.gl/BMGhuf16cvVUkQAF9',
+          post_time_hour: 12,
+        }
+      });
+
+      // Default templates
+      await prisma.replyTemplates.create({
+        data: {
+          shop_id: targetHareteruId,
+          templates_star3: JSON.stringify(defaultStar3),
+          templates_star4: JSON.stringify(defaultStar4),
+          templates_star5: JSON.stringify(defaultStar5),
+        },
+      });
+
+      console.log('✅ ラフ＆ミートラウンジ晴れテル。 demo data have been successfully seeded!');
+
       // Load secure master admin password from environment variable with a safe dynamic fallback
       const password = process.env.MASTER_ADMIN_PASSWORD || 'password';
 
