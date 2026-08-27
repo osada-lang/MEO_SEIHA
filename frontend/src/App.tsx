@@ -17,7 +17,8 @@ import {
   Send,
   Check,
   Clock,
-  ArrowLeft
+  ArrowLeft,
+  BookOpen
 } from 'lucide-react';
 
 const metaEnv = (import.meta as any).env;
@@ -51,6 +52,7 @@ interface DraftPost {
 interface DashboardData {
   shopName: string;
   replyActive: boolean;
+  postActive: boolean;
   imageCount: number;
   postingMode: string;
   postingModeLabel: string;
@@ -90,6 +92,7 @@ interface SettingsData {
   shopId: string;
   shopName: string;
   replyActive: boolean;
+  postActive: boolean;
   customReviewPrompt: string;
   lineUserId: string;
   keywords: {
@@ -1111,6 +1114,14 @@ export default function App() {
             </p>
           </div>
           <button
+            disabled
+            className="px-3 py-1.5 bg-slate-50 border border-slate-200/60 text-slate-400 rounded-xl flex items-center gap-1.5 text-xs font-black cursor-not-allowed opacity-60"
+            title="操作マニュアル（現在準備中）"
+          >
+            <BookOpen className="w-4 h-4 text-slate-400" />
+            <span className="hidden md:inline">操作マニュアル</span>
+          </button>
+          <button
             onClick={handleLogout}
             className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
             title="ログアウト"
@@ -1313,6 +1324,49 @@ export default function App() {
                       <span
                         className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
                           dashboard.replyActive ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </div>
+                    <span className="text-[8px] font-bold text-slate-400 whitespace-nowrap">
+                      ※設定タブで変更可能
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* CARD 3: Toggle Switch Card (Read-Only) for Auto-Post */}
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <span className="text-xs font-black text-slate-800 tracking-wider flex items-center gap-1.5 uppercase">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    自動投稿ステータス
+                  </span>
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                    dashboard.postActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    {dashboard.postActive ? '作動中' : '停止中'}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between py-2">
+                  <div>
+                    <h3 className="text-sm font-extrabold text-slate-900">最新情報の自動投稿機能</h3>
+                    <p className="text-[10px] text-slate-400 font-bold leading-relaxed mt-0.5">
+                      ONの場合、毎日設定された時間に、Google Drive内のストック画像とAIが生成したおしらせ文章を自動で公開します。<br />
+                      OFFの場合、自動投稿処理は一時停止されます。
+                    </p>
+                  </div>
+
+                  {/* Read-Only Status Toggle (Changeable via Settings Tab) */}
+                  <div className="flex flex-col items-end gap-1">
+                    <div
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-default rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                        dashboard.postActive ? 'bg-emerald-500' : 'bg-slate-300'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          dashboard.postActive ? 'translate-x-5' : 'translate-x-0'
                         }`}
                       />
                     </div>
@@ -1551,7 +1605,7 @@ export default function App() {
                   </div>
 
                   {/* 🚨 TEST BUTTON FOR ROLL-OVER */}
-                  {dashboard.draftPosts && dashboard.draftPosts.length > 0 && (
+                  {userRole === 'ADMIN' && dashboard.draftPosts && dashboard.draftPosts.length > 0 && (
                     <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 space-y-2 mt-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
@@ -1735,6 +1789,46 @@ export default function App() {
                   <span
                     className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
                       settings.replyActive ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* CARD: Toggle Switch Card for Auto-post inside Settings */}
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <span className="text-xs font-black text-slate-800 tracking-wider flex items-center gap-1.5 uppercase">
+                  <span className={`w-2.5 h-2.5 rounded-full ${settings.postActive ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
+                  自動投稿ステータス
+                </span>
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                  settings.postActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {settings.postActive ? '作動中' : '停止中'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between py-1">
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900">最新情報の自動投稿機能</h3>
+                  <p className="text-[10px] text-slate-400 font-bold leading-relaxed mt-0.5">
+                    ONの場合、毎日設定された時間に、Google Drive内のストック画像とAIが生成したおしらせ文章を自動で公開します。<br />
+                    OFFの場合、自動投稿処理は一時停止されます。
+                  </p>
+                </div>
+
+                {/* Smooth Animated Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setSettings({ ...settings, postActive: !settings.postActive })}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    settings.postActive ? 'bg-emerald-500' : 'bg-slate-300'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      settings.postActive ? 'translate-x-5' : 'translate-x-0'
                     }`}
                   />
                 </button>
