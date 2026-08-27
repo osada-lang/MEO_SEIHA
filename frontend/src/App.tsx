@@ -38,6 +38,7 @@ interface ShopProfile {
   google_drive_folder_id: string | null;
   line_user_id: string | null;
   reply_active: boolean;
+  post_active?: boolean;
   custom_review_prompt: string | null;
 }
 
@@ -1071,6 +1072,11 @@ export default function App() {
                                 <p className="text-[10px] text-slate-400 font-bold">{shop.email}</p>
                               </div>
                               <div className="flex items-center gap-3 self-end sm:self-auto">
+                                <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                                  shop.post_active ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' : 'bg-slate-100 text-slate-500 border border-slate-200'
+                                }`}>
+                                  {shop.post_active ? '毎日投稿: 作動中' : '毎日投稿: 停止中'}
+                                </span>
                                 <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
                                   shop.reply_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-slate-100 text-slate-500 border border-slate-200'
                                 }`}>
