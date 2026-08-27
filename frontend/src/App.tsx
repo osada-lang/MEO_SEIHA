@@ -18,7 +18,8 @@ import {
   Check,
   Clock,
   ArrowLeft,
-  BookOpen
+  BookOpen,
+  X
 } from 'lucide-react';
 
 const metaEnv = (import.meta as any).env;
@@ -129,6 +130,10 @@ export default function App() {
   const [settings, setSettings] = useState<SettingsData | null>(null);
   const [photos, setPhotos] = useState<DriveImage[]>([]);
   const [reviews, setReviews] = useState<ReviewLog[]>([]);
+
+  // Operation Manual states
+  const [isManualOpen, setIsManualOpen] = useState<boolean>(false);
+  const [manualTab, setManualTab] = useState<'intro' | 'posting' | 'reviews'>('intro');
 
   // Sub-actions states
   const [isUploading, setIsUploading] = useState<boolean>(false);
@@ -1126,11 +1131,14 @@ export default function App() {
             </p>
           </div>
           <button
-            disabled
-            className="px-3 py-1.5 bg-slate-50 border border-slate-200/60 text-slate-400 rounded-xl flex items-center gap-1.5 text-xs font-black cursor-not-allowed opacity-60"
-            title="操作マニュアル（現在準備中）"
+            onClick={() => {
+              setManualTab('intro');
+              setIsManualOpen(true);
+            }}
+            className="px-3 py-1.5 bg-indigo-50 border border-indigo-100/80 text-indigo-700 hover:bg-indigo-100 rounded-xl flex items-center gap-1.5 text-xs font-black transition-all active:scale-[0.97]"
+            title="操作マニュアルを開く"
           >
-            <BookOpen className="w-4 h-4 text-slate-400" />
+            <BookOpen className="w-4 h-4 text-indigo-500 animate-pulse" />
             <span className="hidden md:inline">操作マニュアル</span>
           </button>
           <button
@@ -2731,6 +2739,240 @@ export default function App() {
           <p className="text-[9px] text-slate-400 font-bold truncate" title={currentShop.email}>{currentShop.email}</p>
         </div>
       </aside>
+
+      {/* 📖 Operation Manual Modal for Store Owners (Mobile-first & Responsive) */}
+      {isManualOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-2 text-brandBlue-600">
+                <BookOpen className="w-5 h-5" />
+                <h2 className="text-sm font-black text-slate-900">MEO SEIHA 操作マニュアル</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsManualOpen(false)}
+                className="p-1.5 hover:bg-slate-200/80 rounded-full text-slate-400 hover:text-slate-600 transition-all"
+                title="閉じる"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Touch-friendly Category Tabs */}
+            <div className="px-4 py-2 bg-slate-50/50 border-b border-slate-100 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              <button
+                type="button"
+                onClick={() => setManualTab('intro')}
+                className={`py-2 px-4 rounded-xl text-xs font-extrabold transition-all shrink-0 ${
+                  manualTab === 'intro'
+                    ? 'bg-brandBlue-500 text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
+                }`}
+              >
+                📖 はじめに
+              </button>
+              <button
+                type="button"
+                onClick={() => setManualTab('posting')}
+                className={`py-2 px-4 rounded-xl text-xs font-extrabold transition-all shrink-0 ${
+                  manualTab === 'posting'
+                    ? 'bg-brandBlue-500 text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
+                }`}
+              >
+                📸 写真と自動投稿
+              </button>
+              <button
+                type="button"
+                onClick={() => setManualTab('reviews')}
+                className={`py-2 px-4 rounded-xl text-xs font-extrabold transition-all shrink-0 ${
+                  manualTab === 'reviews'
+                    ? 'bg-brandBlue-500 text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
+                }`}
+              >
+                💬 返信とLINEアラート
+              </button>
+            </div>
+
+            {/* Scrollable Content Container */}
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
+              {/* CATEGORY 1: Introduction */}
+              {manualTab === 'intro' && (
+                <div className="space-y-4 text-slate-700">
+                  <div className="bg-indigo-50/60 border border-indigo-100/50 rounded-2xl p-4 space-y-1.5">
+                    <p className="text-xs font-extrabold text-indigo-900">✨ MEO SEIHA へようこそ！</p>
+                    <p className="text-[11px] text-indigo-700 leading-relaxed font-bold">
+                      本システムは、Googleマップでの店舗露出を高める「毎日のおしらせ自動投稿」と、お客様の「クチコミ自動返信」を1つに統合した、店舗オーナー様専用の全自動集客支援システムです。
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-black text-slate-800 border-l-2 border-brandBlue-500 pl-2">
+                      各メニューの役割
+                    </h3>
+                    <div className="space-y-2 text-[11px] leading-relaxed font-bold">
+                      <div className="flex gap-2 bg-slate-50/80 border border-slate-100 p-3 rounded-xl">
+                        <span className="text-base">🏠</span>
+                        <div>
+                          <p className="text-slate-900 font-extrabold">ダッシュボード</p>
+                          <p className="text-slate-500 mt-0.5">
+                            現在の自動投稿・返信の稼働ステータスや、本日を含めた3日先までの「投稿下書き（プレビュー）」を一覧で確認・手動でリライトができます。
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 bg-slate-50/80 border border-slate-100 p-3 rounded-xl">
+                        <span className="text-base">📸</span>
+                        <div>
+                          <p className="text-slate-900 font-extrabold">画像ストック管理</p>
+                          <p className="text-slate-500 mt-0.5">
+                            ご自身の専用Google Driveとリアルタイムで自動同期したストック写真の一覧です。新しい写真を直接アップロードして追加することもできます。
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 bg-slate-50/80 border border-slate-100 p-3 rounded-xl">
+                        <span className="text-base">💬</span>
+                        <div>
+                          <p className="text-slate-900 font-extrabold">口コミ・AIお詫び文</p>
+                          <p className="text-slate-500 mt-0.5">
+                            届いた口コミの一覧です。AIが自動返信した履歴の確認や、低評価に対するAIが作成した「謝罪文下書き」を、手動でサッと編集・承認して送信できます。
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 bg-slate-50/80 border border-slate-100 p-3 rounded-xl">
+                        <span className="text-base">⚙️</span>
+                        <div>
+                          <p className="text-slate-900 font-extrabold">自動投稿＆返信設定</p>
+                          <p className="text-slate-500 mt-0.5">
+                            自動投稿の時間帯の設定、集客用キーワードの登録、AIへのアピール指示（強み）、高評価用テンプレート（5パターン）などを自由に変更・一括保存できます。
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* CATEGORY 2: Auto Posting */}
+              {manualTab === 'posting' && (
+                <div className="space-y-4 text-slate-700">
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-black text-slate-800 border-l-2 border-brandBlue-500 pl-2">
+                      自動投稿のON/OFFと投稿時間の調整
+                    </h3>
+                    <p className="text-[11px] text-slate-500 font-bold leading-relaxed">
+                      「設定」タブのトグルスイッチを操作して、**自動投稿機能そのものをON/OFF**（稼働・一時停止）させることができます。
+                      また、毎日おしらせを公開する時間帯（例：ランチ前の11時、夕方前の17時など）も、1時間刻みで自由に設定できます。
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-black text-slate-800 border-l-2 border-brandBlue-500 pl-2">
+                      写真のストック数による3つの自動投稿モード
+                    </h3>
+                    <p className="text-[11px] text-slate-500 font-bold leading-relaxed">
+                      Google Driveの専用フォルダに写真を保存（または画像画面から追加）しておくだけで、システムがストック写真の枚数を自動で数え、最適な投稿モードを身代わりで切り替えます。
+                    </p>
+                    <div className="space-y-2 text-[11px] font-bold">
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <p className="text-indigo-900 font-extrabold">【ストック 0 枚】テキストのみ投稿モード</p>
+                        <p className="text-slate-500 mt-0.5">
+                          写真がない場合、AIが店舗全体の魅力を伝える「お知らせ文章のみ」を毎日作成してGoogleに投稿します。
+                        </p>
+                      </div>
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <p className="text-indigo-900 font-extrabold">【ストック 1〜9 枚】交互ローテーションモード</p>
+                        <p className="text-slate-500 mt-0.5">
+                          同じ画像の連続投稿による効果低下を防ぐため、「画像付き投稿」と「テキストのみ投稿」を**日替わりで交互に自動公開**します。
+                        </p>
+                      </div>
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <p className="text-indigo-900 font-extrabold">【ストック 10 枚以上】画像連続投稿モード</p>
+                        <p className="text-slate-500 mt-0.5">
+                          十分な枚数があるため、毎日異なるストック写真を使用した「写真あり投稿」を連続して行います。
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-black text-slate-800 border-l-2 border-brandBlue-500 pl-2">
+                      🤖 ホームページやグルメサイトURLの読み取り機能
+                    </h3>
+                    <p className="text-[11px] text-slate-500 font-bold leading-relaxed">
+                      「設定」タブにて、ご自身の「公式HP」「食べログ」「ホットペッパー」「ぐるなび」のURLを入力しておくと、**Gemini AIがそれらのWebページを自動で裏側から解析・読み込み**します。
+                      自店舗にしかない一次情報（こだわりメニュー、限定コース、コンセプト）をAIが深く理解した上で紹介文を作成するため、プロが書いたような極めて説得力のあるMEOおしらせが自動生成されます。
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* CATEGORY 3: Reviews & LINE */}
+              {manualTab === 'reviews' && (
+                <div className="space-y-4 text-slate-700">
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-black text-slate-800 border-l-2 border-brandBlue-500 pl-2">
+                      高評価（★3〜5）への「1時間後」自動返信
+                    </h3>
+                    <p className="text-[11px] text-slate-500 font-bold leading-relaxed">
+                      「自動返信：ON」の場合、高評価のクチコミが入ると、システムに登録された5パターンの定型テンプレートからランダムに1つを選択します。
+                      bot感（機械的）を100%排除して温かみを持たせるため、あえて即座に送信せず**「1時間後」に自動的に返信がGoogleマップへ送信**されます。
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-black text-slate-800 border-l-2 border-brandBlue-500 pl-2">
+                      低評価（★1・2）への自動ブレーキ ＆ LINEアラート
+                    </h3>
+                    <p className="text-[11px] text-slate-500 font-bold leading-relaxed">
+                      万が一、星1や星2の低評価クチコミが届いた場合は、風評被害や機械的な返信によるトラブルを防ぐため、**自動返信処理に強力なブレーキ（自動送信の一時停止）**がかかります。
+                    </p>
+                    <div className="space-y-2 text-[10px] font-bold text-slate-500">
+                      <p className="flex items-start gap-1.5">
+                        <span className="bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full shrink-0 scale-90">STEP 1</span>
+                        <span>
+                          AIが届いたクチコミ本文を読み取り、相手の不満点（接客や技術、提供スピードなど）に極めて真摯に寄り添った個別の「謝罪・お詫び文の下書き」を数秒で作成し、保留状態で保存します。
+                        </span>
+                      </p>
+                      <p className="flex items-start gap-1.5">
+                        <span className="bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full shrink-0 scale-90">STEP 2</span>
+                        <span>
+                          登録された店主様のLINE宛てに「緊急：新着低評価を検出しました」と即時にプッシュ通知（LINEアラート）を送信。
+                        </span>
+                      </p>
+                      <p className="flex items-start gap-1.5">
+                        <span className="bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full shrink-0 scale-90">STEP 3</span>
+                        <span>
+                          LINEメッセージ内のワンクリックログインURL、または「口コミ」タブから、AIが用意した下書きを確認。必要に応じてサッと手動で微調整し、<strong>「返信を送信」ボタンを1タップするだけ</strong>で、公式返信がGoogleマップに反映されます。
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-col items-center gap-2">
+              <p className="text-[9px] text-slate-400 font-bold text-center">
+                MEO SEIHA は、店舗様の露出向上と口コミ業務の効率化を全自動で支援し続けます！
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsManualOpen(false)}
+                className="w-full bg-brandBlue-500 hover:bg-brandBlue-600 text-white font-extrabold text-xs py-3 px-4 rounded-xl shadow-md transition-all active:scale-[0.98]"
+              >
+                マニュアルを閉じて作業に戻る
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
