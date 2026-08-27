@@ -235,6 +235,12 @@ export default function App() {
   useEffect(() => {
     if (!currentShop) return;
 
+    // Clear previous shop data to prevent old data ghosting/badges during loading
+    setDashboard(null);
+    setSettings(null);
+    setPhotos([]);
+    setReviews([]);
+
     const fetchTabData = async () => {
       setIsLoading(true);
       try {
