@@ -2197,70 +2197,7 @@ app.listen(port, () => {
         await prisma.shop.delete({ where: { id: thanxByEmail.id } });
       }
       console.log('🧹 Purge completed successfully.');
-
-      // Create a BRAND-NEW, pristine account with clean defaults
-      console.log('✨ Issuing brand-new clean OWNER account for "合同会社THANX CREATE"...');
-      const thanxOwner = await prisma.shop.create({
-        data: {
-          id: targetThanxId,
-          name: '合同会社THANX CREATE',
-          email: 'thanxcreate@gmail.com',
-          password: 'Tody-12191019',
-          role: 'OWNER',
-          agency_name: 'THANXCREATE',
-          google_location_id: 'locations/7613471938029191960',
-          google_drive_folder_id: '1AIgemm9-fvP-eLwP7p2p8Plja1mbOJtX',
-          line_user_id: process.env.LINE_USER_ID || 'U205e0595cff6e3882288962525941500',
-          reply_active: true,
-          post_active: true,
-          custom_review_prompt: '合同会社THANX CREATEのカスタマーサポートとして、極めて真摯にお詫びしてください。店舗様の売上向上に本気で伴走する企業として、サービス改善へ向けて早急に対応する熱い誠意を伝えてください。',
-        }
-      });
-
-      // Recreate ShopKeywords with clean pristine defaults (draft_posts will be null, so generated fresh!)
-      await prisma.shopKeywords.create({
-        data: {
-          shop_id: targetThanxId,
-          main_keywords: JSON.stringify(['名古屋 MEO', 'MEO対策', 'Googleマップ集客', 'ローカルSEO', 'THANX CREATE']),
-          sub_keywords: JSON.stringify(['口コミ対策', 'GBP運用', 'マップ順位', '集客効果', '名古屋マーケティング', '店舗集客', '自動投稿', 'SNS連動', '口コミ返信', 'AI作成']),
-          fixed_footer: '店舗名: 合同会社THANX CREATE\n住所: 名古屋市中区栄1丁目23-29\nお問い合わせ: thanxcreate@gmail.com',
-          custom_prompt: '丁寧で自然なトーンで、MEO集客サポートの魅力を訴求してください。',
-          post_time_hour: 12,
-        }
-      });
-
-      // Recreate default templates
-      const defaultStar3 = [
-        'ご来店および貴重なご意見をいただきありがとうございます。ご指摘いただいた点を真摯に受け止め、今後のサービス向上に役立ててまいります。',
-        'この度はご来店いただきありがとうございました。至らない点があったことをお詫びするとともに、スタッフ一同、よりご満足いただけるお店づくりに努めてまいります。',
-        'ご感想をお寄せいただきありがとうございます。いただいたご意見を店舗全体で共有し、改善を重ね要領よく対応してまいります。またのご来店をお待ちしております。',
-        'ご来店ありがとうございました。お褒めいただいた点も、ご指摘いただいた点も大変参考になります。今後ともよろしくお願いいたします。',
-        'ご意見ありがとうございます。次回ご来店の際には、より良いサービスを提供できるよう、スタッフ教育や設備改善に取り組んでまいります。'
-      ];
-      const defaultStar4 = [
-        'この度はご来店いただき、また高評価をありがとうございます！ご満足いただけて大変嬉しく思います。またのお越しを心よりお待ちしております。',
-        'お忙しい中、嬉しい口コミをご投稿いただき誠にありがとうございます。これからも素敵なお時間を提供できるよう、努力を続けてまいります。',
-        'ご来店および素晴らしい評価をありがとうございます。お食事やお店の雰囲いを楽しんでいただけて何よりです。次回のご来店もお待ちしております。',
-        '大変嬉しいお声をいただき、スタッフ一同の励みになります！次回はさらにご満足いただけるよう、心を込めておもてなしいたします。',
-        'ご投稿ありがとうございます！高評価をいただき感謝申し上げます。今後とも変わらぬご愛顧 of the hood, よろしくお願い申し上げます。'
-      ];
-      const defaultStar5 = [
-        'この度は最高評価をいただき、誠にありがとうございます！本当に嬉しいお言葉を励みに、これからも最上のサービスを追求してまいります。',
-        'ご来店いただき、またお褒めの言葉をいただき大変光栄です！また次回も「来てよかった」と思っていただけるよう、全力を尽くします。',
-        '素晴らしい評価をありがとうございます！当店での時間が素敵な思い出となったのであれば幸いです。またのご来店を心よりお待ちしております！',
-        'スタッフ全員が笑顔になる最高の口コミをありがとうございます！いただいたエネルギーを糧に、次回も完璧な施術・サービスを提供します。',
-        'ご来店ありがとうございました！星5つの満点評価をいただき感謝の極みです。これからもお客様に愛され続けるお店を目指して頑張ります！'
-      ];
-      await prisma.replyTemplates.create({
-        data: {
-          shop_id: targetThanxId,
-          templates_star3: JSON.stringify(defaultStar3),
-          templates_star4: JSON.stringify(defaultStar4),
-          templates_star5: JSON.stringify(defaultStar5),
-        }
-      });
-
-      console.log('✅ Brand-new clean "合同会社THANX CREATE" account has been successfully issued!');
+      console.log('🚫 OWNER account "合同会社THANX CREATE" has been successfully purged/deleted upon request. Awaiting re-issuing...');
 
       // Safe purge existing demo agency and demo store
       const targetAgencyId = 'demo-agency-uuid';
@@ -2520,6 +2457,28 @@ app.listen(port, () => {
       });
 
       // Default templates
+      const defaultStar3 = [
+        'ご来店および貴重なご意見をいただきありがとうございます。ご指摘いただいた点を真摯に受け止め、今後のサービス向上に役立ててまいります。',
+        'この度はご来店いただきありがとうございました。至らない点があったことをお詫びするとともに、スタッフ一同、よりご満足いただけるお店づくりに努めてまいります。',
+        'ご感想をお寄せいただきありがとうございます。いただいたご意見を店舗全体で共有し、改善を重ね要領よく対応してまいります。またのご来店をお待ちしております。',
+        'ご来店ありがとうございました。お褒めいただいた点も、ご指摘いただいた点も大変参考になります。今後ともよろしくお願いいたします。',
+        'ご意見ありがとうございます。次回ご来店の際には、より良いサービスを提供できるよう、スタッフ教育や設備改善に取り組んでまいります。'
+      ];
+      const defaultStar4 = [
+        'この度はご来店いただき、また高評価をありがとうございます！ご満足いただけて大変嬉しく思います。またのお越しを心よりお待ちしております。',
+        'お忙しい中、嬉しい口コミをご投稿いただき誠にありがとうございます。これからも素敵なお時間を提供できるよう、努力を続けてまいります。',
+        'ご来店および素晴らしい評価をありがとうございます。お食事やお店の雰囲いを楽しんでいただけて何よりです。次回のご来店もお待ちしております。',
+        '大変嬉しいお声をいただき、スタッフ一同の励みになります！次回はさらにご満足いただけるよう、心を込めておもてなしいたします。',
+        'ご投稿ありがとうございます！高評価をいただき感謝申し上げます。今後とも変わらぬご愛顧 of the hood, よろしくお願い申し上げます。'
+      ];
+      const defaultStar5 = [
+        'この度は最高評価をいただき、誠にありがとうございます！本当に嬉しいお言葉を励みに、これからも最上のサービスを追求してまいります。',
+        'ご来店いただき、またお褒めの言葉をいただき大変光栄です！また次回も「来てよかった」と思っていただけるよう、全力を尽くします。',
+        '素晴らしい評価をありがとうございます！当店での時間が素敵な思い出となったのであれば幸いです。またのご来店を心よりお待ちしております！',
+        'スタッフ全員が笑顔になる最高の口コミをありがとうございます！いただいたエネルギーを糧に、次回も完璧な施術・サービスを提供します。',
+        'ご来店ありがとうございました！星5つの満点評価をいただき感謝の極みです。これからもお客様に愛され続けるお店を目指して頑張ります！'
+      ];
+
       await prisma.replyTemplates.create({
         data: {
           shop_id: targetHareteruId,
