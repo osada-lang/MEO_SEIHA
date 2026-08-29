@@ -1102,6 +1102,7 @@ app.post('/api/shops/:shopId/reviews/:reviewId/reply', async (req, res) => {
       data: {
         reply_text: replyText,
         is_auto_replied: true, // Marked as replied
+        reply_source: 'MANUAL',
       }
     });
 
@@ -1941,6 +1942,7 @@ async function syncReviewsFromGBP(shopId: string) {
                 comment,
                 reply_text: aiDraft,
                 is_auto_replied: !!replyComment, // If already replied on Google, mark true, else false
+                reply_source: replyComment ? 'GBP' : null,
                 requires_alert: false, // No LINE alerts!
                 create_time: new Date(createTime),
               }
@@ -1996,6 +1998,7 @@ async function syncReviewsFromGBP(shopId: string) {
                 is_auto_replied: true,
                 reply_text: googleReplyComment, // 実際のGoogle側の返信文面で上書き
                 requires_alert: false,         // アラート監視や未返信放置アラートの対象から解除
+                reply_source: 'GBP',
               }
             });
           }
@@ -2120,7 +2123,10 @@ async function runBackgroundScheduler() {
                     // Mark as replied in database
                     await prisma.reviewLogs.update({
                       where: { id: pRev.id },
-                      data: { is_auto_replied: true }
+                      data: {
+                        is_auto_replied: true,
+                        reply_source: 'AUTO',
+                      }
                     });
                     console.log(`✅ [自動送信成功] 口コミ: ${pRev.review_id} への返信投稿を完了しました。`);
                   } catch (gmbErr: any) {
@@ -2429,6 +2435,7 @@ app.listen(port, () => {
           is_auto_replied: true,
           requires_alert: false,
           escalation_triggered: false,
+          reply_source: 'GBP',
           create_time: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
         }
       });
@@ -2459,6 +2466,7 @@ app.listen(port, () => {
           is_auto_replied: true,
           requires_alert: false,
           escalation_triggered: false,
+          reply_source: 'GBP',
           create_time: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
         }
       });

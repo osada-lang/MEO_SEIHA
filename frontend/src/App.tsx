@@ -85,6 +85,7 @@ interface ReviewLog {
   is_auto_replied: boolean;
   requires_alert: boolean;
   escalation_triggered: boolean;
+  reply_source?: string | null;
   create_time: string;
   is_pre_integration?: boolean;
 }
@@ -2398,9 +2399,12 @@ export default function App() {
                               )
                               : (review.is_pre_integration
                                 ? 'bg-slate-100 text-slate-500 border border-slate-200'
-                                : (review.star_rating >= 3
-                                  ? 'bg-indigo-50 text-indigo-700 border border-indigo-100'
-                                  : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                : (review.reply_source === 'GBP'
+                                  ? 'bg-slate-50 text-slate-600 border border-slate-200'
+                                  : (review.reply_source === 'AUTO' || (!review.reply_source && review.star_rating >= 3)
+                                    ? 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                                    : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                  )
                                 )
                               )
                           }`}>
@@ -2417,7 +2421,13 @@ export default function App() {
                               )
                               : (review.is_pre_integration
                                 ? '導入前返信済'
-                                : (review.star_rating >= 3 ? '自動送信完了' : '手動送信完了')
+                                : (review.reply_source === 'GBP'
+                                  ? 'GBPから返信完了'
+                                  : (review.reply_source === 'AUTO' || (!review.reply_source && review.star_rating >= 3)
+                                    ? '自動送信完了'
+                                    : '手動送信完了'
+                                  )
+                                )
                               )
                             }
                           </span>
