@@ -2452,6 +2452,20 @@ app.listen(port, () => {
           custom_prompt: '姿勢矯正処 一心 いっしんの魅力（本格姿勢矯正、脊椎調整、根本からの体質改善、独自の技術アプローチ）を伝統と格式のある誠実なトーンでお伝えください。',
           main_keywords: ['姿勢矯正 整体', '一心 いっしん', '腰痛 肩こり根本改善'],
           sub_keywords: ['骨格調整 整体処', '頭痛眼精疲労', '姿勢バランス矯正']
+        },
+        {
+          id: 'shop-birirea-ikebukuro-uuid',
+          name: '美リレア 池袋店',
+          email: 'kansuke118@gmail.com',
+          password: 'Uc3MXHMW',
+          google_location_id: 'locations/668960084986404425',
+          google_drive_folder_id: '1d1mWZwEBZr7ZiycKI7wHu_U30V4zHOL3',
+          agency_name: 'アンビション',
+          fixed_footer: '店舗名: 美リレア 池袋店\nご予約・お問い合わせはお気軽にどうぞ！',
+          map_url: 'https://maps.app.goo.gl/1zxyH3V2riK9axTf8',
+          custom_prompt: '美リレア 池袋店の魅力（リラクゼーション、エステ、ボディケア、丁寧なカウンセリング、池袋駅近くの上質サロン）を温かく誠実なトーンでアピールしてください。',
+          main_keywords: ['池袋 エステ', '美リレア 池袋店', '池袋 リラクゼーション'],
+          sub_keywords: ['ボディケア 池袋', 'フェイシャル エステ', '美肌 トリートメント']
         }
       ];
 
