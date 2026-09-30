@@ -146,6 +146,20 @@ async function main() {
       custom_prompt: '美リレア 池袋店の魅力（リラクゼーション、エステ、ボディケア、丁寧なカウンセリング、池袋駅近くの上質サロン）を温かく誠実なトーンでアピールしてください。',
       main_keywords: ['池袋 エステ', '美リレア 池袋店', '池袋 リラクゼーション'],
       sub_keywords: ['ボディケア 池袋', 'フェイシャル エステ', '美肌 トリートメント']
+    },
+    {
+      id: 'shop-hiyon-esthe-uuid',
+      name: 'ヒヨンエステサロン',
+      email: 'lihuiying47@gmail.com',
+      password: 'bQWn6A3k',
+      google_location_id: 'locations/4094802191284405159',
+      google_drive_folder_id: '17Koztg3zCf5d0fumvPBjUP7_0g3Z4m2k',
+      agency_name: 'アンビション',
+      fixed_footer: '店舗名: ヒヨンエステサロン\nご予約・お問い合わせはお気軽にどうぞ！',
+      map_url: 'https://maps.app.goo.gl/K7R3eMYKcLrYndFv5',
+      custom_prompt: 'ヒヨンエステサロンの魅力（本格エステ、美肌トリートメント、フェイシャルケア、リラクゼーション、丁寧なカウンセリング）を温かく誠実なトーンでお伝えください。',
+      main_keywords: ['エステサロン', 'ヒヨンエステサロン', 'フェイシャル 美肌'],
+      sub_keywords: ['美肌トリートメント', '毛穴ケア エステ', 'リラクゼーション']
     }
   ];
 
