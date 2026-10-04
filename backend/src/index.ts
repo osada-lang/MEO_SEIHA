@@ -2547,6 +2547,20 @@ app.listen(port, () => {
           custom_prompt: 'ヒヨンエステサロンの魅力（本格エステ、美肌トリートメント、フェイシャルケア、リラクゼーション、丁寧なカウンセリング）を温かく誠実なトーンでお伝えください。',
           main_keywords: ['エステサロン', 'ヒヨンエステサロン', 'フェイシャル 美肌'],
           sub_keywords: ['美肌トリートメント', '毛穴ケア エステ', 'リラクゼーション']
+        },
+        {
+          id: 'shop-medical-salon-fun-uuid',
+          name: 'メディカルサロンFUN',
+          email: 'funs.1965@gmail.com',
+          password: 'ZfD2Eszh',
+          google_location_id: 'locations/16472522341085045151',
+          google_drive_folder_id: '1GB1rqkUf6rISFIB8AkdevEoGD4HaZVfu',
+          agency_name: 'アンビション',
+          fixed_footer: '店舗名: メディカルサロンFUN\nご予約・お問い合わせはお気軽にどうぞ！',
+          map_url: 'https://maps.app.goo.gl/UpFjiAQWN4vodAa2A',
+          custom_prompt: 'メディカルサロンFUNの魅力（メディカルエステ、本格サロンケア、肌質改善、リラクゼーション、丁寧なカウンセリング）を温かく誠実なトーンでお伝えください。',
+          main_keywords: ['メディカルエステ', 'メディカルサロンFUN', '肌質改善 サロン'],
+          sub_keywords: ['フェイシャルケア', 'エイジングケア エステ', 'リラクゼーションサロン']
         }
       ];
 
