@@ -174,6 +174,20 @@ async function main() {
       custom_prompt: 'メディカルサロンFUNの魅力（メディカルエステ、本格サロンケア、肌質改善、リラクゼーション、丁寧なカウンセリング）を温かく誠実なトーンでお伝えください。',
       main_keywords: ['メディカルエステ', 'メディカルサロンFUN', '肌質改善 サロン'],
       sub_keywords: ['フェイシャルケア', 'エイジングケア エステ', 'リラクゼーションサロン']
+    },
+    {
+      id: 'shop-villa-favorie-uuid',
+      name: 'Villa Favorie 白金台',
+      email: 'villafavorie@gmail.com',
+      password: 'eH7ALyFa',
+      google_location_id: 'locations/10556864728268357143',
+      google_drive_folder_id: '1tHw-5hUyh6gdlnDaSFcZUoPP-wUQFmQy',
+      agency_name: 'アンビション',
+      fixed_footer: '店舗名: Villa Favorie 白金台\nご予約・お問い合わせはお気軽にどうぞ！',
+      map_url: 'https://maps.app.goo.gl/XssnrjnQ5TJKot3B9',
+      custom_prompt: 'Villa Favorie 白金台の魅力（上質なエステサロン、白金台のプライベート空間、本格フェイシャル＆ボディケア、極上の癒やしと丁寧なおもてなし）を洗練された温かいトーンでお伝えください。',
+      main_keywords: ['白金台 エステ', 'Villa Favorie 白金台', '白金台 リラクゼーション'],
+      sub_keywords: ['フェイシャル エステ', 'プライベートサロン', 'エイジングケア 白金台']
     }
   ];
 
