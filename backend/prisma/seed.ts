@@ -271,11 +271,11 @@ async function main() {
           sub_keywords: JSON.stringify(ns.sub_keywords),
           fixed_footer: ns.fixed_footer,
           custom_prompt: ns.custom_prompt,
-          hp_url: ns.map_url,
+          hp_url: null,
           tabelog_url: '',
           hotpepper_url: '',
           gurunavi_url: '',
-          gbp_action_url: ns.map_url,
+          gbp_action_url: null,
           post_time_hour: 12,
         }
       });

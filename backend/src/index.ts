@@ -1870,8 +1870,18 @@ async function executeDailyPostRollover(shopId: string) {
       let callToActionPayload = undefined;
       if (shop.keywords && shop.keywords.gbp_action_url && shop.keywords.gbp_action_url.trim()) {
         const actionUrl = shop.keywords.gbp_action_url.trim();
-        const isGoogleShare = actionUrl.includes('share.google') || actionUrl.includes('maps.google') || actionUrl.includes('posts.gle') || actionUrl.includes('goo.gl/maps');
-        if (!isGoogleShare && (actionUrl.startsWith('http://') || actionUrl.startsWith('https://'))) {
+        const isGoogleMapsUrl = 
+          actionUrl.includes('maps.app.goo.gl') ||
+          actionUrl.includes('goo.gl/maps') ||
+          actionUrl.includes('maps.google.') ||
+          actionUrl.includes('google.com/maps') ||
+          actionUrl.includes('google.co.jp/maps') ||
+          actionUrl.includes('share.google') ||
+          actionUrl.includes('posts.gle');
+
+        if (isGoogleMapsUrl) {
+          console.warn(`⚠️ [GBP規約ガード] 店舗「${shop.name}」: Googleマップ自身のURLが詳細ボタンに設定されていたため、循環リンク違反・スパム判定を防ぐためボタン付与を安全にスキップしました。`);
+        } else if (actionUrl.startsWith('http://') || actionUrl.startsWith('https://')) {
           console.log(`🔗 Attaching Call-to-Action button to GBP post: ${actionUrl}`);
           callToActionPayload = {
             actionType: 'LEARN_MORE',
@@ -2854,11 +2864,11 @@ app.listen(port, () => {
               sub_keywords: JSON.stringify(ns.sub_keywords),
               fixed_footer: ns.fixed_footer,
               custom_prompt: ns.custom_prompt,
-              hp_url: ns.map_url,
+              hp_url: null,
               tabelog_url: '',
               hotpepper_url: '',
               gurunavi_url: '',
-              gbp_action_url: ns.map_url,
+              gbp_action_url: null,
               post_time_hour: 12,
             }
           });
@@ -2872,6 +2882,48 @@ app.listen(port, () => {
             }
           });
           console.log(`✅ Live "${ns.name}" has been successfully seeded!`);
+        }
+      }
+
+      // 🛡️ Clean up legacy circular Google Maps URLs from gbp_action_url / hp_url in DB while preserving real website URLs
+      const existingKeywords = await prisma.shopKeywords.findMany();
+      for (const kw of existingKeywords) {
+        let needsUpdate = false;
+        let cleanedActionUrl = kw.gbp_action_url;
+        let cleanedHpUrl = kw.hp_url;
+
+        if (cleanedActionUrl && (
+          cleanedActionUrl.includes('maps.app.goo.gl') ||
+          cleanedActionUrl.includes('goo.gl/maps') ||
+          cleanedActionUrl.includes('maps.google.') ||
+          cleanedActionUrl.includes('google.com/maps') ||
+          cleanedActionUrl.includes('google.co.jp/maps') ||
+          cleanedActionUrl.includes('share.google') ||
+          cleanedActionUrl.includes('posts.gle')
+        )) {
+          cleanedActionUrl = null;
+          needsUpdate = true;
+        }
+
+        if (cleanedHpUrl && (
+          cleanedHpUrl.includes('maps.app.goo.gl') ||
+          cleanedHpUrl.includes('goo.gl/maps') ||
+          cleanedHpUrl.includes('maps.google.') ||
+          cleanedHpUrl.includes('google.com/maps') ||
+          cleanedHpUrl.includes('google.co.jp/maps')
+        )) {
+          cleanedHpUrl = null;
+          needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+          await prisma.shopKeywords.update({
+            where: { id: kw.id },
+            data: {
+              gbp_action_url: cleanedActionUrl,
+              hp_url: cleanedHpUrl
+            }
+          });
         }
       }
 
