@@ -188,6 +188,34 @@ async function main() {
       custom_prompt: 'Villa Favorie 白金台の魅力（上質なエステサロン、白金台のプライベート空間、本格フェイシャル＆ボディケア、極上の癒やしと丁寧なおもてなし）を洗練された温かいトーンでお伝えください。',
       main_keywords: ['白金台 エステ', 'Villa Favorie 白金台', '白金台 リラクゼーション'],
       sub_keywords: ['フェイシャル エステ', 'プライベートサロン', 'エイジングケア 白金台']
+    },
+    {
+      id: 'shop-jot-support-kobe-uuid',
+      name: 'JOTサポート神戸',
+      email: 'jotota2525@gmail.com',
+      password: 'Sb2cF29P',
+      google_location_id: 'locations/9652958919745648454',
+      google_drive_folder_id: '1nUy--vz_ynL0rdI7bq4Rz1NpfedxQzh-',
+      agency_name: 'アンビション',
+      fixed_footer: '店舗名: JOTサポート神戸\nご予約・お問い合わせはお気軽にどうぞ！',
+      map_url: 'https://maps.app.goo.gl/ZTetUegFF5bSgRa98',
+      custom_prompt: 'JOTサポート神戸の魅力（就労移行支援、自立サポート、専門的なトレーニング、安心できる個別カウンセリング、神戸での手厚い支援体制）を誠実で温かいトーンでお伝えください。',
+      main_keywords: ['神戸 就労移行支援', 'JOTサポート神戸', '神戸 自立支援'],
+      sub_keywords: ['就労トレーニング', '就職サポート 神戸', '個別カウンセリング']
+    },
+    {
+      id: 'shop-restore-heart-uuid',
+      name: 'リストアハート',
+      email: 'restoreheart6312@gmail.com',
+      password: 'Vn5W6NAj',
+      google_location_id: 'locations/543983859825508248',
+      google_drive_folder_id: '14jx6oQU7DlxcsDeLwWdR8rB2lUBI-jJ6',
+      agency_name: 'アンビション',
+      fixed_footer: '店舗名: リストアハート\nご予約・お問い合わせはお気軽にどうぞ！',
+      map_url: 'https://maps.app.goo.gl/KtifSJcCG3ShGRfN6',
+      custom_prompt: 'リストアハートの魅力（心身のリラクゼーション、整体ケア、丁寧なカウンセリング、根本的な体調改善、安心のプライベート空間）を優しく誠実なトーンでお伝えください。',
+      main_keywords: ['リラクゼーション 整体', 'リストアハート', '疲労回復 ケア'],
+      sub_keywords: ['骨格調整 サロン', '自律神経 ケア', 'プライベートサロン']
     }
   ];
 
