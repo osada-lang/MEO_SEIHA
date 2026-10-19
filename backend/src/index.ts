@@ -1438,13 +1438,34 @@ async function generateSingleDraft(
   shop: any,
   dayIndex: number,
   driveFiles?: DriveFileItem[],
-  forceTextOnly: boolean = false
+  forceTextOnly: boolean = false,
+  isTodayPublishedParam?: boolean
 ): Promise<{ text: string, subKeywords: string[], imageFileId: string | null }> {
   const mainKeywords: string[] = JSON.parse(shop.keywords?.main_keywords || '[]');
   const subKeywords: string[] = JSON.parse(shop.keywords?.sub_keywords || '[]');
   const customPrompt = shop.keywords?.custom_prompt || '';
   const hpUrl = shop.keywords?.hp_url || '';
   const fixedFooter = shop.keywords?.fixed_footer || '';
+
+  let isTodayPublished = false;
+  if (isTodayPublishedParam !== undefined) {
+    isTodayPublished = isTodayPublishedParam;
+  } else {
+    try {
+      const existingDrafts: any[] = JSON.parse(shop.keywords?.draft_posts || '[]');
+      const publishedItem = existingDrafts.find((d: any) => d.dayIndex === -1);
+      if (publishedItem) {
+        if (!publishedItem.publishedAt) {
+          isTodayPublished = true;
+        } else {
+          const formatter = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit' });
+          const todayJst = formatter.format(new Date());
+          const pubDateStr = formatter.format(new Date(publishedItem.publishedAt));
+          isTodayPublished = (pubDateStr === todayJst);
+        }
+      }
+    } catch (e) {}
+  }
 
   let imageFileId: string | null = null;
   const selectedSubKeywords: string[] = [];
@@ -1534,14 +1555,18 @@ async function generateSingleDraft(
 
   const selectedTheme = themes[dayIndex % themes.length];
 
-  // Get current target date and day of week in JST calculated dynamically from dayIndex offset
+  // Get current target date and day of week in JST calculated dynamically from dayOffset
+  const dayOffset = isTodayPublished ? (dayIndex + 1) : dayIndex;
   const now = new Date();
-  const targetDate = new Date(now.getTime() + dayIndex * 24 * 60 * 60 * 1000);
+  const targetDate = new Date(now.getTime() + dayOffset * 24 * 60 * 60 * 1000);
   const targetDateJp = targetDate.toLocaleDateString('ja-JP', {
     timeZone: 'Asia/Tokyo',
     year: 'numeric',
     month: 'long',
-    day: 'numeric',
+    day: 'numeric'
+  });
+  const targetWeekday = targetDate.toLocaleDateString('ja-JP', {
+    timeZone: 'Asia/Tokyo',
     weekday: 'long'
   });
 
@@ -1557,11 +1582,13 @@ async function generateSingleDraft(
     - 店舗名: ${shop.name}
     - 所在地住所情報（固定フッターより抜粋）: ${fixedFooter || '未設定'}
     - ターゲット層へのアピール・トーンマナー: ${customPrompt || '親しみやすく誠実なトーン。'}
-    - 本日の下書きの投稿予定日: ${targetDateJp}
-    - 投稿スロット番号: Day ${dayIndex} (${dayIndex === 0 ? '本日投稿分' : dayIndex === 1 ? '明日投稿分' : '明後日・3日後投稿分'})
+    - 本日の下書きの公開予定日: ${targetDateJp}
+    - 公開予定曜日: 【${targetWeekday}】
+    - 投稿スロット番号: Day ${dayIndex} (${isTodayPublished ? (dayIndex === 0 ? '明日投稿分' : dayIndex === 1 ? '明後日投稿分' : '明々後日投稿分') : (dayIndex === 0 ? '本日投稿分' : dayIndex === 1 ? '明日投稿分' : '明後日投稿分')})
 
-    【曜日別・日毎の言語切り替えルール（指定がある場合）】
-    ※「ターゲット層へのアピール・トーンマナー」において「月曜日は英語」「土日は英語」「1日おきに英語」などの曜日・日毎の言語条件指定がある場合は、上記の【本日の下書きの投稿予定日】の曜日や【投稿スロット番号】を元に、該当する日のみ指定された言語（英語等）、それ以外の日は自然な日本語で執筆してください。特に言語指定がない場合は自然な日本語で執筆してください。
+    【言語決定の最重要ルール（最優先・絶対厳守）】
+    「ターゲット層へのアピール・トーンマナー」に記載されている曜日別・日毎の言語指定（日本語、英語、韓国語、中国語など）がある場合は、必ず上記の【公開予定曜日】（${targetWeekday}）に厳密に従い、該当する曜日に指定された言語で本文全体・箇条書き・CTA・キーワードのすべてを執筆してください。指定された言語以外の言語で出力することは絶対に禁止します。
+    ※特に言語の指定がない場合は、自然な日本語で執筆してください。
 
     【作成の絶対ルール（厳守してください）】
     1. 結論ファースト（PREP法）の徹底:
@@ -1572,7 +1599,7 @@ async function generateSingleDraft(
        主語を「当店」や「当院」などの曖昧な言葉にせず、必ず「${shop.name}」という具体的な店舗名で表記してください。また、エリア名（店舗の所在地・地域）を一文の中に自然に含めてください。エリア名については、必ず「所在地住所情報（固定フッター）」に記載されている住所情報のみから正しい地域名（市区町村名や駅名など）を抽出し、それを使用してください。フッターに住所情報がない場合、あるいは未設定の場合は、具体的な地域名は出力せず、所在地を特定しない汎用的な表現にしてください。メインキーワードやその他の情報から地域名を取得したり、存在しない架空の地域名を捏造することは絶対に禁止します。
 
     3. メインキーワードの完全含有:
-       指定されたメインキーワード [ ${mainKeywords.join(', ')} ] を、文章全体の自然な文脈にそって【すべて必ず】本文中に含めてください。単なるキーワードの羅列や強引な詰め込みは厳禁です。（※英語等の指定がある場合でも、メインキーワードを文脈に合わせて適切に含めてください）
+       指定されたメインキーワード [ ${mainKeywords.join(', ')} ] を、文章全体の自然な文脈にそって【すべて必ず】本文中に含めてください。単なるキーワードの羅列や強引な詰め込みは厳禁です。（※英語や韓国語等の他言語で執筆する場合は、文脈に合わせてキーワードの意味を正しく自然に翻訳して含めてください）
 
     4. 本日のサブキーワード:
        本日の日替わりサブキーワード [ ${selectedSubKeywords.join(', ')} ] を、文章の中に自然に盛り込んでください。
@@ -1590,15 +1617,17 @@ async function generateSingleDraft(
 
     7. アクション喚起（CTA）の自然な配置（後半）:
        文章の最後（箇条書きの後）の締めくくりのアクション喚起（CTA）として、必ず次の指定テキストを【一言一句違わずに固定の1文】としてそのまま出力してください。
-       指定テキスト（日本語の場合）：「『詳細』ボタン、またはプロフィールのウェブサイトリンクからお気軽にお問い合わせください。」
-       指定テキスト（英語指定の場合）：「Please feel free to contact us via the 'Learn more' button or the website link in our profile.」
+       ・日本語で執筆する場合：「『詳細』ボタン、またはプロフィールのウェブサイトリンクからお気軽にお問い合わせください。」
+       ・英語で執筆する場合：「Please feel free to contact us via the 'Learn more' button or the website link in our profile.」
+       ・韓国語で執筆する場合：「'상세' 버튼 또는 프로필의 웹사이트 링크를 통해 편하게 문의해 주세요.」
+       ・その他の言語で執筆する場合：上記メッセージを該当言語に自然かつ正確に翻訳した固定の1文を出力してください。
        （※この指定テキスト以外の独自の行動喚起や売り込みの文章、連絡先などを追加することは【絶対に】禁止します）
 
     8. 段落分けと空行の徹底（スマートフォン可読性の最適化）:
        文章全体が視覚的に詰まって見苦しくなるのを防ぐため、一つの段落は必ず「1文〜最大2文程度（50文字〜100文字程度）」とし、各段落の間には【必ず空行を1行】挟んでください。中盤の説明文、後半のまとめ、最後のアクション喚起（CTA）の各箇所においても、文章が2文以上続く場合は積極的に改行・空行を挟んで複数の短い段落に分割してください。スマートフォン画面でのスクロール時の読みやすさを極限まで高めてください。
 
     9. 文字数および言語制限:
-       全体の本文は【500文字程度（英語の場合は100〜150単語程度）】に収め、一般客が読んで親しみやすく自然な文章（トーンマナーで英語等の言語指定がある場合はその言語、特に指定がない場合は自然な日本語）で仕上げてください。
+       全体の本文は【日本語・韓国語等の場合は500文字程度、英語等のアルファベット言語の場合は100〜150単語程度】に収め、一般客が読んで親しみやすく自然な文章（上記【言語決定の最重要ルール】で決定した指定言語）で仕上げてください。
 
     10. 署名・連絡先・記号マークダウンの排除:
         本文の中には、ホームページURL、電話番号、アクションボタンの文言（「詳細はこちら」「今すぐ予約」など）、住所、店舗名のフッター署名、および絵文字やマークダウン記号（**、#、*など）は【絶対に】含めないでください。純粋な文章テキストと「・」マーク、改行のみで出力してください。
@@ -1683,16 +1712,18 @@ app.post('/api/shops/:shopId/draft-posts/regenerate', async (req, res) => {
       driveFilesList = await fetchDriveFilesWithSubfolders(auth, shop.google_drive_folder_id);
     }
 
+    const isTodayPublished = draftPostsArr.some((d: any) => d.dayIndex === -1);
+
     if (all) {
       // Regenerate all 3 days
-      const day0 = await generateSingleDraft(shop, 0, driveFilesList);
-      const day1 = await generateSingleDraft(shop, 1, driveFilesList);
-      const day2 = await generateSingleDraft(shop, 2, driveFilesList);
+      const day0 = await generateSingleDraft(shop, 0, driveFilesList, false, isTodayPublished);
+      const day1 = await generateSingleDraft(shop, 1, driveFilesList, false, isTodayPublished);
+      const day2 = await generateSingleDraft(shop, 2, driveFilesList, false, isTodayPublished);
 
       const nextDrafts = [
-        { dayIndex: 0, title: '今日投稿予定の下書き (Day 0)', text: day0.text, subKeywords: day0.subKeywords, imageFileId: day0.imageFileId || null },
-        { dayIndex: 1, title: '明日投稿予定の下書き (Day 1)', text: day1.text, subKeywords: day1.subKeywords, imageFileId: day1.imageFileId || null },
-        { dayIndex: 2, title: '明後日投稿予定の下書き (Day 2)', text: day2.text, subKeywords: day2.subKeywords, imageFileId: day2.imageFileId || null },
+        { dayIndex: 0, title: isTodayPublished ? '明日投稿予定の下書き (Day 0)' : '今日投稿予定の下書き (Day 0)', text: day0.text, subKeywords: day0.subKeywords, imageFileId: day0.imageFileId || null },
+        { dayIndex: 1, title: isTodayPublished ? '明後日投稿予定の下書き (Day 1)' : '明日投稿予定の下書き (Day 1)', text: day1.text, subKeywords: day1.subKeywords, imageFileId: day1.imageFileId || null },
+        { dayIndex: 2, title: isTodayPublished ? '明々後日投稿予定の下書き (Day 2)' : '明後日投稿予定の下書き (Day 2)', text: day2.text, subKeywords: day2.subKeywords, imageFileId: day2.imageFileId || null },
       ];
 
       // Keep dayIndex: -1 if it exists
@@ -1705,9 +1736,13 @@ app.post('/api/shops/:shopId/draft-posts/regenerate', async (req, res) => {
     } else {
       // Regenerate single day's draft
       const targetIndex = typeof dayIndex === 'number' ? dayIndex : 0;
-      const regenerated = await generateSingleDraft(shop, targetIndex, driveFilesList);
+      const regenerated = await generateSingleDraft(shop, targetIndex, driveFilesList, false, isTodayPublished);
 
-      const defaultTitles = [
+      const defaultTitles = isTodayPublished ? [
+        '明日投稿予定の下書き (Day 0)',
+        '明後日投稿予定の下書き (Day 1)',
+        '明々後日投稿予定の下書き (Day 2)'
+      ] : [
         '今日投稿予定の下書き (Day 0)',
         '明日投稿予定の下書き (Day 1)',
         '明後日投稿予定の下書き (Day 2)'
@@ -2030,7 +2065,7 @@ async function executeDailyPostRollover(shopId: string) {
   // 3. Generate a brand new Day 2 draft using Gemini AI with robust fail-safe error boundary!
   let nextDay2;
   try {
-    const newDay2Raw = await generateSingleDraft(shop, 2, driveFilesList, forceTextOnlyForDay2);
+    const newDay2Raw = await generateSingleDraft(shop, 2, driveFilesList, forceTextOnlyForDay2, true);
     nextDay2 = {
       dayIndex: 2,
       title: '明々後日投稿予定の下書き (Day 2)',
