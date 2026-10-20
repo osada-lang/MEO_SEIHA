@@ -854,7 +854,12 @@ app.post('/api/shops/:shopId/settings', async (req, res) => {
     };
 
     if (postStartDate !== undefined) {
-      updateData.post_start_date = postStartDate ? new Date(postStartDate) : null;
+      if (!postStartDate) {
+        updateData.post_start_date = null;
+      } else {
+        const dateStr = String(postStartDate).split('T')[0].trim();
+        updateData.post_start_date = new Date(`${dateStr}T00:00:00.000Z`);
+      }
     }
 
     // 1. Update Shop Profile details
@@ -2680,20 +2685,8 @@ app.listen(port, () => {
       console.log('✅ Verified Shop.post_start_date column in database.');
       // Auto-configure scheduled start date for JOTサポート神戸 (2026-11-01)
       try {
-        const updateRes = await prisma.shop.updateMany({
-          where: {
-            OR: [
-              { email: 'jotota2525@gmail.com' },
-              { name: { contains: 'JOTサポート神戸' } }
-            ]
-          },
-          data: {
-            post_start_date: new Date('2026-11-01T00:00:00+09:00')
-          }
-        });
-        if (updateRes.count > 0) {
-          console.log(`📅 [自動投稿開始日設定] JOTサポート神戸様の投稿開始予定日を「2026年11月1日」に設定しました（更新: ${updateRes.count}件）。`);
-        }
+        await prisma.$executeRawUnsafe(`UPDATE "Shop" SET "post_start_date" = '2026-11-01' WHERE "email" = 'jotota2525@gmail.com' OR "name" LIKE '%JOTサポート神戸%';`);
+        console.log('📅 [自動投稿開始日設定] JOTサポート神戸様の投稿開始予定日を「2026年11月1日」に確実設定しました。');
       } catch (err: any) {
         console.warn('⚠️ JOTサポート神戸 post_start_date setup warning:', err.message || err);
       }

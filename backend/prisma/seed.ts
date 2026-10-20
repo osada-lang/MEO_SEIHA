@@ -202,7 +202,7 @@ async function main() {
       custom_prompt: 'JOTサポート神戸の魅力（就労移行支援、自立サポート、専門的なトレーニング、安心できる個別カウンセリング、神戸での手厚い支援体制）を誠実で温かいトーンでお伝えください。',
       main_keywords: ['神戸 就労移行支援', 'JOTサポート神戸', '神戸 自立支援'],
       sub_keywords: ['就労トレーニング', '就職サポート 神戸', '個別カウンセリング'],
-      post_start_date: new Date('2026-11-01T00:00:00+09:00'),
+      post_start_date: new Date('2026-11-01T00:00:00.000Z'),
     },
     {
       id: 'shop-restore-heart-uuid',
@@ -302,7 +302,7 @@ async function main() {
         { name: { contains: 'JOTサポート神戸' } }
       ]
     },
-    data: { post_start_date: new Date('2026-11-01T00:00:00+09:00') }
+    data: { post_start_date: new Date('2026-11-01T00:00:00.000Z') }
   });
   console.log('✅ Ensured JOTサポート神戸 post_start_date is set to 2026-11-01.');
 
