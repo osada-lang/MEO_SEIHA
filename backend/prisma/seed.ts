@@ -201,7 +201,8 @@ async function main() {
       map_url: 'https://maps.app.goo.gl/ZTetUegFF5bSgRa98',
       custom_prompt: 'JOTサポート神戸の魅力（就労移行支援、自立サポート、専門的なトレーニング、安心できる個別カウンセリング、神戸での手厚い支援体制）を誠実で温かいトーンでお伝えください。',
       main_keywords: ['神戸 就労移行支援', 'JOTサポート神戸', '神戸 自立支援'],
-      sub_keywords: ['就労トレーニング', '就職サポート 神戸', '個別カウンセリング']
+      sub_keywords: ['就労トレーニング', '就職サポート 神戸', '個別カウンセリング'],
+      post_start_date: new Date('2026-11-01T00:00:00+09:00'),
     },
     {
       id: 'shop-restore-heart-uuid',
@@ -259,6 +260,7 @@ async function main() {
           line_user_id: null,
           reply_active: false,
           post_active: false,
+          post_start_date: (ns as any).post_start_date || null,
           custom_review_prompt: ns.custom_prompt + ' 不満のお言葉には真摯にお詫びし、迅速にサービスや運営の改善へ取り組む誠意を伝えてください。',
           created_at: new Date('2026-10-01T00:00:00+09:00'), // Treated as Oct 1, 2026!
         }
@@ -291,6 +293,18 @@ async function main() {
       console.log(`✅ Live "${ns.name}" has been successfully seeded!`);
     }
   }
+
+  // Ensure JOTサポート神戸 has post_start_date set to 2026-11-01
+  await prisma.shop.updateMany({
+    where: {
+      OR: [
+        { email: 'jotota2525@gmail.com' },
+        { name: { contains: 'JOTサポート神戸' } }
+      ]
+    },
+    data: { post_start_date: new Date('2026-11-01T00:00:00+09:00') }
+  });
+  console.log('✅ Ensured JOTサポート神戸 post_start_date is set to 2026-11-01.');
 
   console.log('🟢 Database seeding completed successfully!');
 }

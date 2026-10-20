@@ -2676,7 +2676,28 @@ app.listen(port, () => {
 
   // Safe non-destructive check for post_start_date column
   prisma.$executeRawUnsafe('ALTER TABLE "Shop" ADD COLUMN IF NOT EXISTS "post_start_date" DATE;')
-    .then(() => console.log('✅ Verified Shop.post_start_date column in database.'))
+    .then(async () => {
+      console.log('✅ Verified Shop.post_start_date column in database.');
+      // Auto-configure scheduled start date for JOTサポート神戸 (2026-11-01)
+      try {
+        const updateRes = await prisma.shop.updateMany({
+          where: {
+            OR: [
+              { email: 'jotota2525@gmail.com' },
+              { name: { contains: 'JOTサポート神戸' } }
+            ]
+          },
+          data: {
+            post_start_date: new Date('2026-11-01T00:00:00+09:00')
+          }
+        });
+        if (updateRes.count > 0) {
+          console.log(`📅 [自動投稿開始日設定] JOTサポート神戸様の投稿開始予定日を「2026年11月1日」に設定しました（更新: ${updateRes.count}件）。`);
+        }
+      } catch (err: any) {
+        console.warn('⚠️ JOTサポート神戸 post_start_date setup warning:', err.message || err);
+      }
+    })
     .catch((e) => console.warn('⚠️ Could not auto-add post_start_date column:', e.message || e));
 
   // ⏱️ Start Local Background Scheduler Fallback (Every 10 minutes & 15 seconds after startup)
