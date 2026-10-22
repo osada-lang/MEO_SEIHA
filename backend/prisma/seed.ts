@@ -217,6 +217,20 @@ async function main() {
       custom_prompt: 'リストアハートの魅力（心身のリラクゼーション、整体ケア、丁寧なカウンセリング、根本的な体調改善、安心のプライベート空間）を優しく誠実なトーンでお伝えください。',
       main_keywords: ['リラクゼーション 整体', 'リストアハート', '疲労回復 ケア'],
       sub_keywords: ['骨格調整 サロン', '自律神経 ケア', 'プライベートサロン']
+    },
+    {
+      id: 'shop-es-musee-umeda-uuid',
+      name: 'イーズ／ミュゼ 梅田本店',
+      email: 'es.common@gmail.com',
+      password: 'W24e78pP',
+      google_location_id: 'locations/6680957778171277387',
+      google_drive_folder_id: '1EVh_zGWp6yNvw8Zf9gHHmd18WKPmkKNb',
+      agency_name: 'アンビション',
+      fixed_footer: '店舗名: イーズ／ミュゼ 梅田本店\nご予約・お問い合わせはお気軽にどうぞ！',
+      map_url: 'https://maps.app.goo.gl/m2SkrZ6uxJTv3ZM46',
+      custom_prompt: 'イーズ／ミュゼ 梅田本店の魅力（結果にこだわる高品質エステ、フェイシャル＆ボディケア、丁寧なカウンセリング、梅田駅直結・アクセスの良さ、心地よいサロン空間）を上質で誠実なトーンでお伝えください。',
+      main_keywords: ['梅田 エステ', 'イーズ ミュゼ 梅田本店', '梅田 フェイシャル'],
+      sub_keywords: ['毛穴ケア 梅田', '美肌 トリートメント', '痩身 エステ 梅田']
     }
   ];
 
