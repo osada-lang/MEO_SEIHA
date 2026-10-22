@@ -2690,6 +2690,24 @@ app.listen(port, () => {
       } catch (err: any) {
         console.warn('⚠️ JOTサポート神戸 post_start_date setup warning:', err.message || err);
       }
+
+      // Auto-configure created_at for イーズ／ミュゼ 梅田本店 (2026-10-22)
+      try {
+        await prisma.shop.updateMany({
+          where: {
+            OR: [
+              { email: 'es.common@gmail.com' },
+              { name: { contains: 'イーズ／ミュゼ' } }
+            ]
+          },
+          data: {
+            created_at: new Date('2026-10-22T00:00:00+09:00')
+          }
+        });
+        console.log('📅 [登録日設定] イーズ／ミュゼ 梅田本店様の登録日（created_at）を「2026年10月22日」に設定しました。');
+      } catch (err: any) {
+        console.warn('⚠️ イーズ／ミュゼ 梅田本店 created_at setup warning:', err.message || err);
+      }
     })
     .catch((e) => console.warn('⚠️ Could not auto-add post_start_date column:', e.message || e));
 
@@ -3004,7 +3022,8 @@ app.listen(port, () => {
           map_url: 'https://maps.app.goo.gl/m2SkrZ6uxJTv3ZM46',
           custom_prompt: 'イーズ／ミュゼ 梅田本店の魅力（結果にこだわる高品質エステ、フェイシャル＆ボディケア、丁寧なカウンセリング、梅田駅直結・アクセスの良さ、心地よいサロン空間）を上質で誠実なトーンでお伝えください。',
           main_keywords: ['梅田 エステ', 'イーズ ミュゼ 梅田本店', '梅田 フェイシャル'],
-          sub_keywords: ['毛穴ケア 梅田', '美肌 トリートメント', '痩身 エステ 梅田']
+          sub_keywords: ['毛穴ケア 梅田', '美肌 トリートメント', '痩身 エステ 梅田'],
+          created_at: new Date('2026-10-22T00:00:00+09:00'),
         }
       ];
 
@@ -3026,7 +3045,7 @@ app.listen(port, () => {
               reply_active: false,
               post_active: false,
               custom_review_prompt: ns.custom_prompt + ' 不満のお言葉には真摯にお詫びし、迅速にサービスや運営の改善へ取り組む誠意を伝えてください。',
-              created_at: new Date('2026-10-01T00:00:00+09:00'), // Treated as Oct 1, 2026!
+              created_at: (ns as any).created_at || new Date('2026-10-01T00:00:00+09:00'),
             }
           });
 
