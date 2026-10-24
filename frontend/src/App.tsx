@@ -130,6 +130,7 @@ export default function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [userRole, setUserRole] = useState<string | null>(localStorage.getItem('userRole'));
   const [currentShop, setCurrentShop] = useState<ShopProfile | null>(null);
+  const [loggedInUser, setLoggedInUser] = useState<ShopProfile | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'photos' | 'settings' | 'reviews'>('dashboard');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isPageLoading, setIsPageLoading] = useState<boolean>(true);
@@ -233,7 +234,10 @@ export default function App() {
 
         if (res.ok) {
           const data = await res.json();
-          setCurrentShop(data.shop);
+          setLoggedInUser(data.shop);
+          if (!currentShop) {
+            setCurrentShop(data.shop);
+          }
           setUserRole(data.shop.role);
           localStorage.setItem('userRole', data.shop.role);
           setIsViewingShop(data.shop.role !== 'ADMIN' && data.shop.role !== 'AGENCY');
@@ -346,6 +350,7 @@ export default function App() {
         localStorage.setItem('userRole', data.shop.role);
         setToken(data.token);
         setUserRole(data.shop.role);
+        setLoggedInUser(data.shop);
         setCurrentShop(data.shop);
         setActiveTab('dashboard');
         setIsViewingShop(data.shop.role !== 'ADMIN' && data.shop.role !== 'AGENCY');
@@ -365,6 +370,7 @@ export default function App() {
     localStorage.removeItem('userRole');
     setToken(null);
     setUserRole(null);
+    setLoggedInUser(null);
     setCurrentShop(null);
     setDashboard(null);
     setSettings(null);
@@ -1071,9 +1077,9 @@ export default function App() {
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
                 <p className="text-xs font-black text-slate-800 leading-none">
-                  {userRole === 'ADMIN' ? `👑 ${currentShop.name}` : `🏢 ${currentShop.name}`}
+                  {userRole === 'ADMIN' ? `👑 ${(loggedInUser || currentShop)?.name}` : `🏢 ${(loggedInUser || currentShop)?.name}`}
                 </p>
-                <p className="text-[9px] text-slate-400 font-bold mt-1 truncate max-w-[150px]">{currentShop.email}</p>
+                <p className="text-[9px] text-slate-400 font-bold mt-1 truncate max-w-[150px]">{(loggedInUser || currentShop)?.email}</p>
               </div>
               <button
                 onClick={handleLogout}
@@ -1266,6 +1272,9 @@ export default function App() {
                 setSettings(null);
                 setPhotos([]);
                 setReviews([]);
+                if (loggedInUser) {
+                  setCurrentShop(loggedInUser);
+                }
               }}
               className="bg-indigo-50 border border-indigo-100 rounded-2xl p-3.5 text-xs font-black text-indigo-700 flex items-center justify-center gap-1.5 shadow-sm sm:hidden w-full no-print"
             >
@@ -2822,6 +2831,9 @@ export default function App() {
                 setSettings(null);
                 setPhotos([]);
                 setReviews([]);
+                if (loggedInUser) {
+                  setCurrentShop(loggedInUser);
+                }
               }}
               className="w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center gap-3 transition-all bg-indigo-50 border border-indigo-100/60 text-indigo-700 hover:bg-indigo-100 mb-2 shadow-sm"
             >
