@@ -29,6 +29,65 @@ async function main() {
     console.log('👮 Created Admin User.');
   }
 
+  // 🏢 Agency Accounts Setup
+  const agencies = [
+    {
+      id: 'agency-ambition-uuid',
+      name: 'アンビション',
+      email: 'ambition',
+      password: 'h8EKyAnG',
+      role: 'AGENCY',
+      agency_name: 'アンビション',
+    },
+    {
+      id: 'agency-iinnovation-uuid',
+      name: 'i-INNOVATION株式会社',
+      email: 'iinnovation',
+      password: 'M7n7aB6f',
+      role: 'AGENCY',
+      agency_name: 'i-INNOVATION株式会社',
+    }
+  ];
+
+  for (const ag of agencies) {
+    const agExists = await prisma.shop.findFirst({
+      where: {
+        OR: [
+          { id: ag.id },
+          { email: ag.email },
+          { name: ag.name, role: 'AGENCY' }
+        ]
+      }
+    });
+
+    if (!agExists) {
+      await prisma.shop.create({
+        data: {
+          id: ag.id,
+          name: ag.name,
+          email: ag.email,
+          password: ag.password,
+          role: 'AGENCY',
+          agency_name: ag.agency_name,
+          reply_active: false,
+          post_active: false,
+        }
+      });
+      console.log(`🏢 Created Agency Account (${ag.name} / ${ag.email}).`);
+    } else {
+      await prisma.shop.update({
+        where: { id: agExists.id },
+        data: {
+          email: ag.email,
+          password: ag.password,
+          role: 'AGENCY',
+          agency_name: ag.agency_name,
+        }
+      });
+      console.log(`🏢 Updated Agency Account (${ag.name} / ${ag.email}).`);
+    }
+  }
+
 
 
   // 🛡️ Safe Onboarding for 7 New Stores starting on October 1st, 2026.

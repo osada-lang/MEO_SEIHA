@@ -188,12 +188,18 @@ app.post('/api/auth/login', async (req, res) => {
   const { email, password, rememberMe } = req.body;
 
   try {
-    const shop = await prisma.shop.findUnique({
-      where: { email },
+    const normalizedEmail = (email || '').trim();
+    const shop = await prisma.shop.findFirst({
+      where: {
+        OR: [
+          { email: normalizedEmail },
+          { name: normalizedEmail }
+        ]
+      },
     });
 
     if (!shop || shop.password !== password) {
-      return res.status(401).json({ error: 'メールアドレスまたはパスワードが正しくありません。' });
+      return res.status(401).json({ error: 'ログインIDまたはパスワードが正しくありません。' });
     }
 
     // In a real app we would sign a JWT. Here we return a simple simulated token.
@@ -2707,6 +2713,69 @@ app.listen(port, () => {
         console.log('📅 [登録日設定] イーズ／ミュゼ 梅田本店様の登録日（created_at）を「2026年10月22日」に設定しました。');
       } catch (err: any) {
         console.warn('⚠️ イーズ／ミュゼ 梅田本店 created_at setup warning:', err.message || err);
+      }
+
+      // Auto-configure Agency Accounts (アンビション & i-INNOVATION株式会社)
+      try {
+        const agencyList = [
+          {
+            id: 'agency-ambition-uuid',
+            name: 'アンビション',
+            email: 'ambition',
+            password: 'h8EKyAnG',
+            role: 'AGENCY',
+            agency_name: 'アンビション',
+          },
+          {
+            id: 'agency-iinnovation-uuid',
+            name: 'i-INNOVATION株式会社',
+            email: 'iinnovation',
+            password: 'M7n7aB6f',
+            role: 'AGENCY',
+            agency_name: 'i-INNOVATION株式会社',
+          }
+        ];
+
+        for (const ag of agencyList) {
+          const found = await prisma.shop.findFirst({
+            where: {
+              OR: [
+                { id: ag.id },
+                { email: ag.email },
+                { name: ag.name, role: 'AGENCY' }
+              ]
+            }
+          });
+
+          if (!found) {
+            await prisma.shop.create({
+              data: {
+                id: ag.id,
+                name: ag.name,
+                email: ag.email,
+                password: ag.password,
+                role: 'AGENCY',
+                agency_name: ag.agency_name,
+                reply_active: false,
+                post_active: false,
+              }
+            });
+            console.log(`🏢 [代理店アカウント発行] ${ag.name} (ID: ${ag.email}) を新規発行しました。`);
+          } else {
+            await prisma.shop.update({
+              where: { id: found.id },
+              data: {
+                email: ag.email,
+                password: ag.password,
+                role: 'AGENCY',
+                agency_name: ag.agency_name,
+              }
+            });
+            console.log(`🏢 [代理店アカウント更新] ${ag.name} (ID: ${ag.email}) のパスワード・認証情報を更新しました。`);
+          }
+        }
+      } catch (agErr: any) {
+        console.warn('⚠️ Agency accounts setup warning:', agErr.message || agErr);
       }
     })
     .catch((e) => console.warn('⚠️ Could not auto-add post_start_date column:', e.message || e));
