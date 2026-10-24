@@ -3136,6 +3136,7 @@ app.listen(port, () => {
               line_user_id: null,
               reply_active: false,
               post_active: false,
+              post_start_date: (ns as any).post_start_date || null,
               custom_review_prompt: ns.custom_prompt + ' 不満のお言葉には真摯にお詫びし、迅速にサービスや運営の改善へ取り組む誠意を伝えてください。',
               created_at: (ns as any).created_at || new Date('2026-10-01T00:00:00+09:00'),
             }
@@ -3167,6 +3168,15 @@ app.listen(port, () => {
           });
           console.log(`✅ Live "${ns.name}" has been successfully seeded!`);
         }
+      }
+
+      // Ensure scheduled start dates are strictly enforced for JOTサポート神戸 & Tweesalon 本町
+      try {
+        await prisma.$executeRawUnsafe(`UPDATE "Shop" SET "post_start_date" = '2026-11-01' WHERE "email" = 'jotota2525@gmail.com' OR "name" LIKE '%JOTサポート神戸%';`);
+        await prisma.$executeRawUnsafe(`UPDATE "Shop" SET "post_start_date" = '2026-11-01' WHERE "email" = 'ayuka426@icloud.com' OR "name" LIKE '%Tweesalon%';`);
+        console.log('📅 [自動投稿開始日確定] JOTサポート神戸様およびTweesalon 本町様の post_start_date を 2026-11-01 に確定更新しました。');
+      } catch (err: any) {
+        console.warn('⚠️ post_start_date batch update warning:', err.message || err);
       }
 
       // 🛡️ Clean up legacy circular Google Maps URLs from gbp_action_url / hp_url in DB while preserving real website URLs
