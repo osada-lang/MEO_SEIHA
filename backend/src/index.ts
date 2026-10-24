@@ -2697,6 +2697,14 @@ app.listen(port, () => {
         console.warn('⚠️ JOTサポート神戸 post_start_date setup warning:', err.message || err);
       }
 
+      // Auto-configure scheduled start date for Tweesalon 本町 (2026-11-01)
+      try {
+        await prisma.$executeRawUnsafe(`UPDATE "Shop" SET "post_start_date" = '2026-11-01' WHERE "email" = 'ayuka426@icloud.com' OR "name" LIKE '%Tweesalon%';`);
+        console.log('📅 [自動投稿開始日設定] Tweesalon 本町様の投稿開始予定日を「2026年11月1日」に確実設定しました。');
+      } catch (err: any) {
+        console.warn('⚠️ Tweesalon 本町 post_start_date setup warning:', err.message || err);
+      }
+
       // Auto-configure created_at for イーズ／ミュゼ 梅田本店 (2026-10-22)
       try {
         await prisma.shop.updateMany({
@@ -3093,6 +3101,21 @@ app.listen(port, () => {
           main_keywords: ['梅田 エステ', 'イーズ ミュゼ 梅田本店', '梅田 フェイシャル'],
           sub_keywords: ['毛穴ケア 梅田', '美肌 トリートメント', '痩身 エステ 梅田'],
           created_at: new Date('2026-10-22T00:00:00+09:00'),
+        },
+        {
+          id: 'shop-tweesalon-honmachi-uuid',
+          name: 'Tweesalon 本町',
+          email: 'ayuka426@icloud.com',
+          password: 'Xm4D5fFA',
+          google_location_id: 'locations/8065710663346430416',
+          google_drive_folder_id: '1yBUlKbqlFUAsXzDODiP7v15Oe_4CIfe6',
+          agency_name: 'アンビション',
+          fixed_footer: '店舗名: Tweesalon 本町\nご予約・お問い合わせはお気軽にどうぞ！',
+          map_url: 'https://maps.app.goo.gl/GD111JruNkE1nmPA9',
+          custom_prompt: 'Tweesalon 本町の魅力（上質で心地よいプライベート空間、丁寧なカウンセリング、本町エリアでの通いやすさ、一人ひとりに寄り添った確かなケア）を誠実で落ち着いたトーンでお伝えください。',
+          main_keywords: ['本町 サロン', 'Tweesalon 本町', '本町 プライベートサロン'],
+          sub_keywords: ['フェイシャル ケア', 'リラクゼーション 本町', 'トリートメント サロン'],
+          post_start_date: new Date('2026-11-01T00:00:00.000Z'),
         }
       ];
 

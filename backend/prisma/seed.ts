@@ -291,6 +291,21 @@ async function main() {
       main_keywords: ['梅田 エステ', 'イーズ ミュゼ 梅田本店', '梅田 フェイシャル'],
       sub_keywords: ['毛穴ケア 梅田', '美肌 トリートメント', '痩身 エステ 梅田'],
       created_at: new Date('2026-10-22T00:00:00+09:00'),
+    },
+    {
+      id: 'shop-tweesalon-honmachi-uuid',
+      name: 'Tweesalon 本町',
+      email: 'ayuka426@icloud.com',
+      password: 'Xm4D5fFA',
+      google_location_id: 'locations/8065710663346430416',
+      google_drive_folder_id: '1yBUlKbqlFUAsXzDODiP7v15Oe_4CIfe6',
+      agency_name: 'アンビション',
+      fixed_footer: '店舗名: Tweesalon 本町\nご予約・お問い合わせはお気軽にどうぞ！',
+      map_url: 'https://maps.app.goo.gl/GD111JruNkE1nmPA9',
+      custom_prompt: 'Tweesalon 本町の魅力（上質で心地よいプライベート空間、丁寧なカウンセリング、本町エリアでの通いやすさ、一人ひとりに寄り添った確かなケア）を誠実で落ち着いたトーンでお伝えください。',
+      main_keywords: ['本町 サロン', 'Tweesalon 本町', '本町 プライベートサロン'],
+      sub_keywords: ['フェイシャル ケア', 'リラクゼーション 本町', 'トリートメント サロン'],
+      post_start_date: new Date('2026-11-01T00:00:00.000Z'),
     }
   ];
 
@@ -391,6 +406,18 @@ async function main() {
     data: { created_at: new Date('2026-10-22T00:00:00+09:00') }
   });
   console.log('✅ Ensured イーズ／ミュゼ 梅田本店 created_at is set to 2026-10-22.');
+
+  // Ensure Tweesalon 本町 has post_start_date set to 2026-11-01
+  await prisma.shop.updateMany({
+    where: {
+      OR: [
+        { email: 'ayuka426@icloud.com' },
+        { name: { contains: 'Tweesalon' } }
+      ]
+    },
+    data: { post_start_date: new Date('2026-11-01T00:00:00.000Z') }
+  });
+  console.log('✅ Ensured Tweesalon 本町 post_start_date is set to 2026-11-01.');
 
   console.log('🟢 Database seeding completed successfully!');
 }
